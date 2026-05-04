@@ -3,7 +3,7 @@ const express = require("express");
 const session = require("express-session");
 const path = require("path");
 
-// ✅ REDIS (FORMA CORRECTA)
+// ✅ REDIS
 const { createClient } = require("redis");
 const { RedisStore } = require("connect-redis");
 
@@ -20,7 +20,7 @@ const redisClient = createClient({
     url: process.env.REDIS_URL
 });
 
-// Manejo de errores (IMPORTANTE)
+// Manejo de errores
 redisClient.on("error", (err) => {
     console.error("Redis error:", err);
 });
@@ -30,7 +30,7 @@ redisClient.on("error", (err) => {
     await redisClient.connect();
 })();
 
-// 🔐 SESIONES CON REDIS
+// 🔐 SESIONES
 app.use(session({
     store: new RedisStore({
         client: redisClient
@@ -39,14 +39,19 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: true,       // HTTPS (Render)
+        secure: true,
         httpOnly: true,
         sameSite: "lax"
     }
 }));
 
-// ✅ SERVIR CARPETA PUBLIC
+// ✅ SERVIR PUBLIC
 app.use(express.static(path.join(__dirname, "public")));
+
+// 🔥 ENDPOINT RÁPIDO (CLAVE)
+app.get("/ping", (req, res) => {
+    res.status(200).send("OK");
+});
 
 // ✅ RUTA PRINCIPAL
 app.get("/", (req, res) => {
