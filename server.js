@@ -3,6 +3,10 @@ const express = require("express");
 const session = require("express-session");
 const path = require("path");
 
+// ✅ REDIS
+const { createClient } = require("redis");
+const RedisStore = require("connect-redis").default;
+
 const app = express();
 
 // IMPORTANTE PARA RENDER
@@ -11,16 +15,30 @@ app.set("trust proxy", 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// 🔥 CONFIGURAR REDIS
+const redisClient = createClient({
+    url: process.env.REDIS_URL
+});
+
+redisClient.connect().catch(console.error);
+
+// 🔐 SESIONES CON REDIS
 app.use(session({
+    store: new RedisStore({ client: redisClient }),
     secret: process.env.SESSION_SECRET || "secreto123",
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: {
+        secure: true,       // HTTPS (Render)
+        httpOnly: true,
+        sameSite: "lax"
+    }
 }));
 
-// ✅ SERVIR CARPETA PUBLIC (CORRECTO)
+// ✅ SERVIR CARPETA PUBLIC
 app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ RUTA PRINCIPAL (SOLUCIONA "Cannot GET /")
+// ✅ RUTA PRINCIPAL
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public/index.html"));
 });
