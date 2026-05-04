@@ -3,9 +3,9 @@ const express = require("express");
 const session = require("express-session");
 const path = require("path");
 
-// ✅ REDIS
+// ✅ REDIS (FORMA CORRECTA)
 const { createClient } = require("redis");
-const RedisStore = require("connect-redis").default;
+const { RedisStore } = require("connect-redis");
 
 const app = express();
 
@@ -20,11 +20,21 @@ const redisClient = createClient({
     url: process.env.REDIS_URL
 });
 
-redisClient.connect().catch(console.error);
+// Manejo de errores (IMPORTANTE)
+redisClient.on("error", (err) => {
+    console.error("Redis error:", err);
+});
+
+// Conectar Redis
+(async () => {
+    await redisClient.connect();
+})();
 
 // 🔐 SESIONES CON REDIS
 app.use(session({
-    store: new RedisStore({ client: redisClient }),
+    store: new RedisStore({
+        client: redisClient
+    }),
     secret: process.env.SESSION_SECRET || "secreto123",
     resave: false,
     saveUninitialized: false,
