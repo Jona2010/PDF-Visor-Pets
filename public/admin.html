@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- 🔍 SEO -->
+    <title>Panel Administrativo - Control de Dispositivos | Intelliall PETS</title>
+    <meta name="description" content="Panel administrativo para gestión de dispositivos, accesos y alertas de seguridad del sistema PETS Viewer de Intelliall.">
+
+    <link rel="stylesheet" href="styles_admin.css">
+</head>
+
+<body>
+
+<main>
+
+    <!-- 🔐 CABECERA LIMPIA Y PROFESIONAL -->
+    <header class="admin-hero">
+
+        <div class="admin-hero-left">
+            <h1 class="panel-title">🔐 Panel Administrativo</h1>
+
+            <p class="panel-sub">
+                Gestión de dispositivos, accesos y seguridad del sistema PETS Viewer
+            </p>
+
+            <div class="admin-status">
+                <span class="status-dot"></span>
+                <span>Sistema seguro activo</span>
+            </div>
+        </div>
+
+        <div class="admin-hero-right">
+
+            <!-- 🔄 BOTÓN REFRESH -->
+            <button
+                class="btn-refresh"
+                onclick="refrescarPanel()"
+            >
+                🔄 Actualizar ahora
+            </button>
+
+            <!-- 🔙 VOLVER -->
+            <button
+                class="btn-back-admin"
+                onclick="location.href='admin-login.html'"
+            >
+                ← Volver al Login
+            </button>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- 📱 DISPOSITIVOS -->
+    <section>
+        <h2>📱 Dispositivos registrados</h2>
+
+        <table id="tablaDispositivos">
+            <thead>
+                <tr>
+                    <th>Email / Usuario</th>
+                    <th>Browser</th>
+                    <th>Plataforma</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+
+            <tbody></tbody>
+        </table>
+    </section>
+
+
+
+    <!-- 📊 HISTORIAL -->
+    <section>
+        <h2>📊 Historial de accesos</h2>
+
+        <div class="logs-container">
+            <table id="tablaLogs">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>PET</th>
+                        <th>Área</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- 🔥 PAGINACIÓN -->
+        <div class="paginacion">
+            <button onclick="anteriorPagina()">⬅️ Anterior</button>
+            <span id="paginaActual">Página 1</span>
+            <button onclick="siguientePagina()">Siguiente ➡️</button>
+        </div>
+    </section>
+
+
+
+    <!-- 🚨 ALERTAS -->
+    <section>
+        <h2>🚨 Alertas de seguridad</h2>
+
+        <div class="alerts-container">
+            <table id="tablaAlerts">
+                <thead>
+                    <tr>
+                        <th>Mensaje</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+
+                <tbody></tbody>
+            </table>
+        </div>
+    </section>
+
+</main>
+
+<footer>
+    © 2026 Intelliall - Sistema PETS Viewer
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="admin.js"></script>
+
+</body>
+</html>

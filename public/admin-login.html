@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Acceso Administrativo | INTELLIALL</title>
+
+<meta name="description" content="Ingreso seguro al panel administrativo de INTELLIALL PETS Viewer.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f172a">
+
+<link rel="stylesheet" href="styles_login.css">
+
+</head>
+
+<body class="login-body">
+
+<!-- 🔥 ELIMINADO HEADER SUPERIOR INNECESARIO -->
+
+<div class="login-container">
+
+    <!-- 🔐 IZQUIERDA -->
+    <div class="login-left">
+
+        <div class="brand-box">
+            <h1>INTELLIALL</h1>
+            <p>ADMIN PANEL</p>
+            <span>Control seguro de accesos y dispositivos</span>
+        </div>
+
+        <div class="brand-info">
+            <small>
+                Acceso exclusivo para personal autorizado.
+                Todas las acciones son monitoreadas.
+            </small>
+        </div>
+
+    </div>
+
+    <!-- 🔐 DERECHA -->
+    <div class="login-right">
+
+        <div class="login-card">
+
+            <h2>Ingreso Administrativo</h2>
+
+            <p class="login-subtitle">
+                Solo usuarios autorizados
+            </p>
+
+            <!-- 🔥 FORM ADMIN -->
+            <form id="adminLoginForm">
+
+                <!-- EMAIL -->
+                <div class="input-group">
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="Correo electrónico"
+                        autocomplete="username"
+                        required
+                    >
+                </div>
+
+                <!-- PASSWORD -->
+                <div class="input-group">
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Contraseña"
+                        autocomplete="current-password"
+                        required
+                    >
+                    <span id="togglePass" class="toggle-pass">👁️</span>
+                </div>
+
+                <!-- OPCIONES -->
+                <div class="login-options">
+                    <label>
+                        <input type="checkbox">
+                        Recordarme
+                    </label>
+
+                    <span class="forgot">
+                        Seguridad activa
+                    </span>
+                </div>
+
+                <!-- BOTÓN -->
+                <button type="submit" class="login-btn">
+                    Ingresar al Panel
+                </button>
+
+            </form>
+
+            <!-- DIVISOR -->
+            <div class="login-divider">
+                <span>Acceso general</span>
+            </div>
+
+            <!-- VOLVER -->
+            <button
+                type="button"
+                class="admin-btn"
+                onclick="location.href='index.html'"
+            >
+                👤 Volver a Login Usuario
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- SUPABASE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- JS ADMIN LOGIN -->
+<script src="admin-login.js"></script>
+
+</body>
+</html>
