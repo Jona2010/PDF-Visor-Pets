@@ -2,22 +2,26 @@
 <html lang="es">
 <head>
 
-<link rel="preconnect" href="https://cdnjs.cloudflare.com">
-<link rel="preconnect" href="https://cdn.jsdelivr.net">
-
 <meta charset="UTF-8">
+
 <meta
     name="viewport"
-    content="width=device-width,
-             initial-scale=1,
-             maximum-scale=1,
-             user-scalable=no,
-             viewport-fit=cover">
+    content="
+    width=device-width,
+    initial-scale=1,
+    maximum-scale=1,
+    user-scalable=no,
+    viewport-fit=cover">
 
 <title>INTELLIALL | Visor PETS</title>
 
-<meta name="description" content="Visor seguro de PETS con acceso controlado">
-<meta name="robots" content="noindex, nofollow">
+<meta
+    name="description"
+    content="Visor seguro de PETS con acceso controlado">
+
+<meta
+    name="robots"
+    content="noindex, nofollow">
 
 <link rel="stylesheet" href="styles_visor.css">
 
@@ -40,41 +44,62 @@
         </div>
 
         <div class="actions">
-            <button onclick="logout()" class="btn-logout">Salir</button>
+            <button
+                onclick="logout()"
+                class="btn-logout">
+
+                Salir
+            </button>
         </div>
 
     </header>
 
-
     <!-- 🔷 VISOR -->
     <main class="viewer">
 
-        <div id="pdfContainer" class="pdf-view"></div>
+        <div
+            id="pdfContainer"
+            class="pdf-view">
+        </div>
 
-        <!-- LOADER -->
-        <div id="loader" class="loader">
+        <!-- 🔥 LOADER -->
+        <div
+            id="loader"
+            class="loader">
+
             <div class="spinner"></div>
+
             <p>Cargando documento...</p>
+
         </div>
 
     </main>
 
 </div>
 
-<!-- LIBRERÍAS -->
-<!-- SUPABASE -->
+<!-- 🔷 SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
-<!-- PDF.JS -->
+<!-- 🔷 PDF.JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
 
-window.pdfjsWorker =
-"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+if(window.pdfjsLib){
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+    console.log("✅ PDF.js Worker OK");
+
+}else{
+
+    console.error("❌ PDF.js no cargó");
+}
 
 </script>
 
+<!-- 🔷 VISOR -->
 <script src="visor.js"></script>
 
 </body>
