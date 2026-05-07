@@ -272,20 +272,34 @@ async function login() {
             }]);
 
         // registrar device
-        await supabaseClient
-            .from("user_devices")
-            .insert([{
-                user_id: user.id,
-                device_id,
-                browser,
-                platform,
-                approved: false
-            }]);
+        const { error: deviceError } = await supabaseClient
+        .from("user_devices")
+        .upsert([{
+            user_id: user.id,
+            device_id,
+            browser,
+            platform,
+            approved: false
+        }], {
+            onConflict: "device_id"
+        });
+
+    if(deviceError){
+
+        console.error("ERROR DEVICE:", deviceError);
 
         showAlert(
-            "📱 Nuevo dispositivo detectado. Espera aprobación.",
-            "warning"
+            "❌ Error registrando dispositivo",
+            "error"
         );
+
+        return;
+    }
+
+    showAlert(
+        "📱 Nuevo dispositivo detectado. Espera aprobación.",
+        "warning"
+    );
 
         await supabaseClient.auth.signOut();
 
