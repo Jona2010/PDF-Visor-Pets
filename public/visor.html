@@ -3,30 +3,16 @@
 <head>
 
 <meta charset="UTF-8">
-
-<!-- 🚀 VIEWPORT PROFESIONAL -->
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <title>INTELLIALL | Visor PETS</title>
 
-<meta
-    name="description"
-    content="Visor seguro de PETS con acceso controlado">
-
-<meta
-    name="robots"
-    content="noindex, nofollow">
-
-<!-- 🚀 PERFORMANCE -->
-<link rel="preconnect" href="https://cdnjs.cloudflare.com">
-<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<meta name="description" content="Visor seguro de PETS con acceso controlado">
+<meta name="robots" content="noindex, nofollow">
 
 <link rel="stylesheet" href="styles_visor.css">
 
 </head>
-
 <body>
 
 <div class="app">
@@ -35,86 +21,46 @@
     <header class="header">
 
         <div class="logo">
-
             <span>INTELLIALL</span>
-
             <small>PETS Viewer</small>
-
         </div>
 
         <div class="controls-bar">
-
             <select id="petSelect"></select>
-
             <select id="areaSelect"></select>
-
         </div>
 
         <div class="actions">
-
-            <button
-                onclick="logout()"
-                class="btn-logout">
-
-                Salir
-
-            </button>
-
+            <button onclick="logout()" class="btn-logout">Salir</button>
         </div>
 
     </header>
 
+
     <!-- 🔷 VISOR -->
     <main class="viewer">
 
-        <div
-            id="pdfContainer"
-            class="pdf-view">
-        </div>
+        <div id="pdfContainer" class="pdf-view"></div>
 
-        <!-- 🔥 LOADER -->
-        <div
-            id="loader"
-            class="loader">
-
+        <!-- LOADER -->
+        <div id="loader" class="loader">
             <div class="spinner"></div>
-
             <p>Cargando documento...</p>
-
         </div>
 
     </main>
 
 </div>
 
-<!-- 🔷 SUPABASE -->
+<!-- LIBRERÍAS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
-<!-- 🔷 PDF.JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
-<!-- 🚀 PDF WORKER -->
 <script>
-
-window.addEventListener("load", () => {
-
-    if(window.pdfjsLib){
-
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
-        console.log("✅ PDF.js Worker OK");
-
-    }else{
-
-        console.error("❌ PDF.js no cargó");
-    }
-
-});
-
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 </script>
 
-<!-- 🔷 VISOR -->
 <script src="visor.js"></script>
 
 </body>

@@ -16,6 +16,9 @@ let renderToken = 0;
 
 let currentLoadingTask = null;
 
+let pdfDocument = null; // ✅ AGREGAR ESTA LÍNEA
+let cargandoPDF = false; // ✅ AGREGAR ESTA LÍNEA
+
 // ===============================
 // 🔐 VALIDAR SESIÓN GOOGLE
 // ===============================
@@ -388,18 +391,21 @@ async function loadPDF() {
         const token = ++renderToken;
         currentLoadingTask = null;
 
-        // 🚀 PDF.js OPTIMIZADO PARA PDFs GRANDES
+        // 🔥 CONFIGURACIÓN CRÍTICA PDFs GRANDES
         currentLoadingTask = pdfjsLib.getDocument({
             url: data.signedUrl,
-            disableAutoFetch: false,
-            disableStream: false,
-            rangeChunkSize: 524288, // ✅ 512KB - MEJOR PARA PDFs GRANDES
-            maxImageSize: 4096,     // ✅ LIMITA IMÁGENES
-            cMapUrl: '/pdfjs/cmaps/', // ✅ CMAPS LOCALES
+            verbosity: 0,              // ✅ SILENCIO
+            disableAutoFetch: true,    // ✅ MANUAL
+            rangeChunkSize: 1048576,   // ✅ 1MB
+            maxImageSize: 4096,
+            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', // ✅ CDN
             cMapPacked: true
         });
 
         const pdf = await currentLoadingTask.promise;
+
+        pdfDocument = pdf; // ✅ GUARDAR REFERENCIA
+        console.log(`✅ PDF: ${pdf.numPages} páginas`); // ✅ DEBUG
 
         // 🚫 TOKEN VÁLIDO
         if (token !== renderToken) {
@@ -438,6 +444,13 @@ async function loadPDF() {
                 console.log(`✅ Batch ${batchStart}/${totalPages} completado`);
             }
         }
+
+        // 🧹 DESTROY DEFINITIVO
+        if (pdfDocument) {
+            pdfDocument.destroy();
+            pdfDocument = null;
+        }
+        currentLoadingTask = null;
 
         // ✅ DESTROY PDF - CRÍTICO
         pdf.destroy();
@@ -492,7 +505,7 @@ async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
         
         // 🖼️ CANVAS OPTIMIZADO
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d", { alpha: false }); // ✅ SIN ALPHA
+        const ctx = canvas.getContext("2d"); // ✅ SIN ALPHA POR DEFAULT
         
         canvas.width = Math.floor(viewport.width);
         canvas.height = Math.floor(viewport.height);
