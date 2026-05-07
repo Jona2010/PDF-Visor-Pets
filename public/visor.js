@@ -11,6 +11,37 @@ let pdfScale = 1;
 let resizeTimeout = null; // 🔥 ESTA LÍNEA FALTABA
 let lastScale = window.visualViewport ? window.visualViewport.scale : 1;
 
+// ===============================
+// 🔐 VALIDAR SESIÓN GOOGLE
+// ===============================
+(async ()=>{
+
+    const { data:{ session } } =
+        await supabaseClient.auth.getSession();
+
+    if(!session){
+
+        window.location.href = "index.html";
+        return;
+    }
+
+    const email = session.user.email || "";
+
+    // 🔥 SOLO CORREOS CORPORATIVOS
+    if(!email.endsWith("@intelliall.com")){
+
+        await supabaseClient.auth.signOut();
+
+        alert(
+            "Solo se permiten correos corporativos"
+        );
+
+        window.location.href = "index.html";
+        return;
+    }
+
+})();
+
 async function loadConfig() {
     const res = await fetch("config.json");
     config = await res.json();

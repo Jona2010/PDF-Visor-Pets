@@ -11,37 +11,65 @@ const supabaseClient = supabase.createClient(
 // ===============================
 document.addEventListener("DOMContentLoaded", () => {
 
-    //console.log("APP CARGADA");
-
+    // FORM LOGIN
     const form = document.getElementById("loginForm");
 
-    if (!form) {
-        console.error("❌ Formulario no encontrado");
-        return;
+    if(form){
+        form.addEventListener("submit", async (e)=>{
+            e.preventDefault();
+            await login();
+        });
     }
 
-    // 🔥 BLOQUEAR SUBMIT NATIVO
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
+    // 🔵 LOGIN GOOGLE
+    const googleBtn = document.getElementById("googleLogin");
 
-        //console.log("LOGIN EJECUTADO");
+    if(googleBtn){
+        googleBtn.addEventListener("click", loginGoogle);
+    }
 
-        await login();
-    });
-
-    // 👁 TOGGLE PASSWORD
+    // TOGGLE PASSWORD
     const toggle = document.getElementById("togglePass");
 
-    if (toggle) {
-        toggle.addEventListener("click", togglePass);
+    if(toggle){
+        toggle.addEventListener("click", togglePassword);
     }
 
 });
 
 // ===============================
+// 🔵 LOGIN CON GOOGLE
+// ===============================
+async function loginGoogle(){
+
+    const { data, error } =
+        await supabaseClient.auth.signInWithOAuth({
+
+            provider: "google",
+
+            options: {
+                redirectTo:
+                    window.location.origin + "/visor.html"
+            }
+        });
+
+    if(error){
+
+        console.error(error);
+
+        showAlert(
+            "❌ Error iniciando sesión con Google",
+            "error"
+        );
+
+        return;
+    }
+}
+
+// ===============================
 // 👁 MOSTRAR / OCULTAR PASSWORD
 // ===============================
-function togglePass() {
+function togglePassword() {
     const input = document.getElementById("password");
     const icon = document.getElementById("togglePass");
 
@@ -204,7 +232,7 @@ async function login() {
 
     // 🔥 SI QUIERES REGENERAR AUTOMÁTICAMENTE
     // DESCOMENTA ESTA LÍNEA:
-    localStorage.removeItem("device_id");
+    //localStorage.removeItem("device_id");
 
     if (!device_id) {
 
@@ -388,4 +416,180 @@ async function login() {
     setTimeout(() => {
         window.location.href = "visor.html";
     }, 1000);
+}
+
+// ===============================
+// 🔵 DETECTAR LOGIN GOOGLE
+// ===============================
+checkGoogleSession();
+
+async function checkGoogleSession(){
+
+    const {
+        data: { session }
+    } = await supabaseClient.auth.getSession();
+
+    // 🔥 SI NO HAY SESIÓN
+    if(!session) return;
+
+    const user = session.user;
+
+    // 🔥 EVITAR LOOP SI YA ESTÁ EN VISOR
+    if(window.location.pathname.includes("visor.html")){
+        return;
+    }
+
+    // ===============================
+    // 🔒 SOLO CORREOS CORPORATIVOS
+    // ===============================
+    if(!user.email.endsWith("@intelliall.com")){
+
+        await supabaseClient.auth.signOut();
+
+        showAlert(
+            "⛔ Solo correos corporativos",
+            "error"
+        );
+
+        return;
+    }
+
+    // ===============================
+    // ✅ CREAR PROFILE SI NO EXISTE
+    // ===============================
+    const { data: existingProfile } =
+        await supabaseClient
+            .from("profiles")
+            .select("id")
+            .eq("id", user.id)
+            .maybeSingle();
+
+    if(!existingProfile){
+
+        const { error: profileError } =
+            await supabaseClient
+                .from("profiles")
+                .insert([{
+                    id: user.id,
+                    email: user.email,
+                    nombre: user.email.split("@")[0]
+                }]);
+
+        if(profileError){
+
+            console.error(profileError);
+
+            showAlert(
+                "❌ Error creando perfil",
+                "error"
+            );
+
+            return;
+        }
+    }
+
+    // ===============================
+    // 📱 DEVICE ID
+    // ===============================
+    let device_id =
+        localStorage.getItem("device_id");
+
+    if(!device_id){
+
+        device_id =
+            crypto.randomUUID
+            ? crypto.randomUUID()
+            : generarUUID();
+
+        localStorage.setItem(
+            "device_id",
+            device_id
+        );
+    }
+
+    // ===============================
+    // 💻 DETECTAR DISPOSITIVO
+    // ===============================
+    const userAgent = navigator.userAgent;
+
+    let browser = "Desconocido";
+
+    if(userAgent.includes("Edg")) browser = "Edge";
+    else if(userAgent.includes("Firefox")) browser = "Firefox";
+    else if(userAgent.includes("Chrome")) browser = "Chrome";
+    else if(userAgent.includes("Safari")) browser = "Safari";
+
+    let platform = "Desktop";
+
+    if(/Android/i.test(userAgent))
+        platform = "Android";
+
+    if(/iPhone|iPad|iPod/i.test(userAgent))
+        platform = "iOS";
+
+    // ===============================
+    // 🔍 BUSCAR DEVICE
+    // ===============================
+    const { data: existingDevice } =
+        await supabaseClient
+            .from("user_devices")
+            .select("*")
+            .eq("device_id", device_id)
+            .maybeSingle();
+
+    // ===============================
+    // 📱 NUEVO DEVICE
+    // ===============================
+    if(!existingDevice){
+
+        const { error: deviceError } =
+            await supabaseClient
+                .from("user_devices")
+                .upsert([{
+                    user_id: user.id,
+                    device_id,
+                    browser,
+                    platform,
+                    approved:false
+                }],{
+                    onConflict:"device_id"
+                });
+
+        if(deviceError){
+
+            console.error(deviceError);
+
+            showAlert(
+                "❌ Error registrando dispositivo",
+                "error"
+            );
+
+            return;
+        }
+
+        showAlert(
+            "📱 Nuevo dispositivo detectado. Espera aprobación.",
+            "warning"
+        );
+
+        return;
+    }
+
+    // ===============================
+    // ⛔ DEVICE NO APROBADO
+    // ===============================
+    if(!existingDevice.approved){
+
+        showAlert(
+            "⛔ Dispositivo pendiente de aprobación",
+            "warning"
+        );
+
+        return;
+    }
+
+    // ===============================
+    // ✅ ENTRAR AL VISOR
+    // ===============================
+    window.location.href = "visor.html";
 }
