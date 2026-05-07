@@ -132,8 +132,42 @@ async function login() {
     const user = data.user;
 
     // ===============================
+    // ✅ CREAR PROFILE SI NO EXISTE
+    // ===============================
+
+    const { data: existingProfile } = await supabaseClient
+        .from("profiles")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+    if(!existingProfile){
+
+        const { error: profileError } = await supabaseClient
+            .from("profiles")
+            .insert([{
+                id: user.id,
+                email: user.email,
+                nombre: email.split("@")[0]
+            }]);
+
+        if(profileError){
+
+            console.error("ERROR PROFILE:", profileError);
+
+            showAlert(
+                "❌ Error creando perfil",
+                "error"
+            );
+
+            return;
+        }
+    }
+
+    // ===============================
     // ✅ LOGIN EXITOSO = ALERTA
     // ===============================
+
     await supabaseClient
         .from("alerts")
         .insert([{
@@ -143,8 +177,6 @@ async function login() {
             nivel: "bajo",
             created_at: new Date().toISOString()
         }]);
-
-
 
     // ===============================
     // 🧩 DETECTAR DISPOSITIVO
