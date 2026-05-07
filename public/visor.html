@@ -2,13 +2,27 @@
 <html lang="es">
 <head>
 
+<link rel="preconnect" href="https://cdnjs.cloudflare.com">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
 <title>INTELLIALL | Visor PETS</title>
 
 <meta name="description" content="Visor seguro de PETS con acceso controlado">
 <meta name="robots" content="noindex, nofollow">
+<link
+    rel="preload"
+    href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+    as="script"
+>
+
+<link
+    rel="preload"
+    href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"
+    as="script"
+>
 
 <link rel="stylesheet" href="styles_visor.css">
 
@@ -53,15 +67,21 @@
 </div>
 
 <!-- LIBRERÍAS -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script
+    defer
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js">
+</script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script
+    defer
+    src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
+</script>
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc =
 "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 </script>
 
-<script src="visor.js"></script>
+<script defer src="visor.js"></script>
 
 </body>
 </html>

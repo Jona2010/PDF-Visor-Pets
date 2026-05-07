@@ -166,7 +166,7 @@ async function loadPDF() {
 
         // 🔥 UI
         container.classList.remove("loaded");
-        container.innerHTML = "";
+        container.replaceChildren();
         loader.style.display = "flex";
 
         // 🔐 SUPABASE URL
@@ -184,12 +184,25 @@ async function loadPDF() {
         const url = data.signedUrl;
 
         // 📄 PDF
-        const pdf = await pdfjsLib.getDocument(url).promise;
+        const loadingTask = pdfjsLib.getDocument({
+
+            url: url,
+
+            disableAutoFetch: true,
+
+            disableStream: false,
+
+            rangeChunkSize: 65536
+        });
+
+        const pdf = await loadingTask.promise;
 
         let row;
         const modoMovil = esMovil();
 
-        for (let i = 1; i <= pdf.numPages; i++) {
+        const paginasIniciales = esMovil() ? 2 : 4;
+
+        for (let i = 1; i <= Math.min(pdf.numPages, paginasIniciales); i++) {
 
             if (modoMovil || (i - 1) % 2 === 0) {
                 row = document.createElement("div");
@@ -213,7 +226,7 @@ async function loadPDF() {
                 scale = ((containerWidth / 2 - 40) / baseViewport.width) * pdfScale;
             }
 
-            const devicePixelRatio = window.devicePixelRatio || 1;
+            const devicePixelRatio = esMovil() ? 1.2 : window.devicePixelRatio || 1;
 
             const viewport = page.getViewport({
                 scale: scale * devicePixelRatio
@@ -222,7 +235,7 @@ async function loadPDF() {
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
 
-            canvas.style.opacity = "0";
+            canvas.style.willChange = "transform";
 
             canvas.width = viewport.width;
             canvas.height = viewport.height;
@@ -600,30 +613,4 @@ document.addEventListener("touchmove", (e) => {
 
 document.addEventListener("touchend", () => {
     initialDistance = null;
-});
-
-// ==========================================
-// 🔥 AUTO-RENDER RESPONSIVE (PRO)
-// ==========================================
-
-// 📱 Detecta cambio de tamaño (desktop + mobile)
-window.addEventListener("resize", () => {
-
-    clearTimeout(resizeTimeout);
-
-    resizeTimeout = setTimeout(() => {
-        //console.log("📐 Resize detectado → recargando PDF");
-        loadPDF();
-    }, 300);
-
-});
-
-// 🔄 Detecta rotación de celular (más preciso)
-window.addEventListener("orientationchange", () => {
-
-    setTimeout(() => {
-        //console.log("📱 Rotación detectada → recargando PDF");
-        loadPDF();
-    }, 400);
-
 });

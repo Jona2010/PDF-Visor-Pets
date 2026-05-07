@@ -3,18 +3,37 @@ require("dotenv").config();
 const express = require("express");
 const session = require("express-session");
 const path = require("path");
+const compression = require("compression");
 
 // ✅ REDIS
 const { createClient } = require("redis");
 const { RedisStore } = require("connect-redis");
 
 const app = express();
+app.use(compression());
 
 // IMPORTANTE PARA RENDER
 app.set("trust proxy", 1);
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+
+    // PDFs más rápidos
+    if(req.url.endsWith(".pdf")){
+
+        res.setHeader(
+            "Cache-Control",
+            "public, max-age=30d"
+        );
+
+        res.setHeader(
+            "Accept-Ranges",
+            "bytes"
+        );
+    }
+
+    next();
+});
 
 // =====================================
 // ✅ REDIS SOLO EN PRODUCCIÓN
@@ -86,7 +105,17 @@ app.use(session(sessionConfig));
 // ✅ SERVIR PUBLIC
 // =====================================
 
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(
+    path.join(__dirname, "public"),
+    {
+
+        maxAge: "30d",
+
+        etag: true,
+
+        lastModified: true
+    }
+));
 
 // =====================================
 // 🔥 ENDPOINT RÁPIDO
