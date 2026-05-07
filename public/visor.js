@@ -159,8 +159,17 @@ async function loadPDF() {
         const area = document.getElementById("areaSelect").value;
 
         // 🔒 VALIDACIONES
-        if (!config.pets[petIndex]) return;
-        if (!config.pets[petIndex].archivos[area]) return;
+        if (!config.pets[petIndex]) {
+
+            cargandoPDF = false;
+            return;
+        }
+
+        if (!config.pets[petIndex].archivos[area]) {
+
+            cargandoPDF = false;
+            return;
+        }
 
         const fileName = config.pets[petIndex].archivos[area];
 
@@ -176,8 +185,13 @@ async function loadPDF() {
             .createSignedUrl(fileName, 60);
 
         if (error) {
-            loader.style.display = "none";
+
             alert("Error cargando PDF");
+
+            loader.style.display = "none";
+
+            cargandoPDF = false;
+
             return;
         }
 
@@ -200,53 +214,78 @@ async function loadPDF() {
         let row;
         const modoMovil = esMovil();
 
-        const paginasIniciales = esMovil() ? 4 : 8;
-
-        for (let i = 1; i <= Math.min(pdf.numPages, paginasIniciales); i++) {
+        for (let i = 1; i <= pdf.numPages; i++) {
 
             if (modoMovil || (i - 1) % 2 === 0) {
+
                 row = document.createElement("div");
+
                 row.style.display = "flex";
                 row.style.justifyContent = "center";
                 row.style.gap = "20px";
                 row.style.width = "100%";
+
                 container.appendChild(row);
             }
 
             const page = await pdf.getPage(i);
 
-            const containerWidth = container.clientWidth;
-            const baseViewport = page.getViewport({ scale: 1 });
+            const containerWidth =
+                container.clientWidth;
+
+            const baseViewport =
+                page.getViewport({ scale: 1 });
 
             let scale;
 
             if (modoMovil) {
-                scale = ((containerWidth * 0.95) / baseViewport.width) * pdfScale;
+
+                scale =
+                    ((containerWidth * 0.95) /
+                    baseViewport.width) * pdfScale;
+
             } else {
-                scale = ((containerWidth / 2 - 40) / baseViewport.width) * pdfScale;
+
+                scale =
+                    ((containerWidth / 2 - 40) /
+                    baseViewport.width) * pdfScale;
             }
 
-            const devicePixelRatio = esMovil() ? 1.2 : window.devicePixelRatio || 1;
+            // ✅ CALIDAD OPTIMIZADA
+            const devicePixelRatio =
+                esMovil()
+                ? 1.7
+                : 1.5;
 
             const viewport = page.getViewport({
                 scale: scale * devicePixelRatio
             });
 
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
+            const canvas =
+                document.createElement("canvas");
 
-            canvas.style.willChange = "transform";
+            const ctx =
+                canvas.getContext("2d");
 
             canvas.width = viewport.width;
             canvas.height = viewport.height;
 
-            canvas.style.width = (viewport.width / devicePixelRatio) + "px";
-            canvas.style.height = (viewport.height / devicePixelRatio) + "px";
+            canvas.style.width =
+                (viewport.width / devicePixelRatio)
+                + "px";
 
-            const pageWrapper = document.createElement("div");
-            pageWrapper.className = "page-wrapper";
+            canvas.style.height =
+                (viewport.height / devicePixelRatio)
+                + "px";
+
+            const pageWrapper =
+                document.createElement("div");
+
+            pageWrapper.className =
+                "page-wrapper";
 
             pageWrapper.appendChild(canvas);
+
             row.appendChild(pageWrapper);
 
             await page.render({
@@ -254,114 +293,9 @@ async function loadPDF() {
                 viewport: viewport
             }).promise;
 
-            canvas.style.transition = "opacity .3s ease";
             canvas.style.opacity = "1";
+            canvas.style.transition = "opacity .2s ease";
         }
-
-        // =====================================
-        // 🚀 CARGAR RESTO DEL PDF
-        // =====================================
-
-        setTimeout(async () => {
-        
-            let row;
-
-            for (
-                let i = paginasIniciales + 1;
-                i <= pdf.numPages;
-                i++
-            ) {
-
-                if (modoMovil || (i - 1) % 2 === 0) {
-
-                    row = document.createElement("div");
-
-                    row.style.display = "flex";
-                    row.style.justifyContent = "center";
-                    row.style.gap = "20px";
-                    row.style.width = "100%";
-
-                    container.appendChild(row);
-                }
-
-                const page = await pdf.getPage(i);
-
-                const containerWidth =
-                    container.clientWidth;
-
-                const baseViewport =
-                    page.getViewport({ scale: 1 });
-
-                let scale;
-
-                if (modoMovil) {
-
-                    scale =
-                        ((containerWidth * 0.95) /
-                        baseViewport.width) * pdfScale;
-
-                } else {
-
-                    scale =
-                        ((containerWidth / 2 - 40) /
-                        baseViewport.width) * pdfScale;
-                }
-
-                const devicePixelRatio =
-                    esMovil()
-                    ? 1.2
-                    : window.devicePixelRatio || 1;
-
-                const viewport = page.getViewport({
-                    scale: scale * devicePixelRatio
-                });
-
-                const canvas =
-                    document.createElement("canvas");
-
-                const ctx =
-                    canvas.getContext("2d");
-
-                canvas.style.willChange = "transform";
-
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-
-                canvas.style.width =
-                    (viewport.width / devicePixelRatio)
-                    + "px";
-
-                canvas.style.height =
-                    (viewport.height / devicePixelRatio)
-                    + "px";
-
-                const pageWrapper =
-                    document.createElement("div");
-
-                pageWrapper.className =
-                    "page-wrapper";
-
-                pageWrapper.appendChild(canvas);
-
-                row.appendChild(pageWrapper);
-
-                await page.render({
-                    canvasContext: ctx,
-                    viewport: viewport
-                }).promise;
-
-                canvas.style.transition =
-                    "opacity .3s ease";
-
-                canvas.style.opacity = "1";
-            }
-            
-            loader.style.display = "none";
-            
-            // 🔓 PDF TERMINÓ COMPLETAMENTE
-            cargandoPDF = false;
-
-        }, 100);
 
         // 👤 LOG
         const { data: { user } } = await supabaseClient.auth.getUser();
@@ -375,18 +309,20 @@ async function loadPDF() {
         }
 
         // 🔥 UI FINAL
-        loader.innerHTML = "<p>Cargando páginas restantes...</p>";
         container.classList.add("loaded");
+
+        // ✅ TERMINÓ TODO EL PDF
+        loader.style.display = "none";
+
+        cargandoPDF = false;
 
     } catch (err) {
 
         console.error("❌ Error en loadPDF:", err);
 
-        const loader = document.getElementById("loader");
         loader.style.display = "none";
 
         cargandoPDF = false;
-
     }
 }
 
@@ -414,83 +350,6 @@ function showAlert(message, type = "error") {
 
     }, 3000);
 }
-
-// ===============================
-// 🔄 RESIZE INTELIGENTE (ANTI-ZOOM)
-// ===============================
-
-let lastWidth = window.innerWidth;
-
-// 🔍 Detectar zoom con rueda (desktop)
-function estaHaciendoZoom(event){
-    return event && (event.ctrlKey || event.metaKey);
-}
-
-// 🔍 Detectar zoom real (móvil / visualViewport)
-function esZoomReal(){
-    return window.visualViewport && window.visualViewport.scale !== 1;
-}
-
-// 🧠 Resize optimizado (FIX DEFINITIVO)
-function handleResize(event) {
-
-    const currentWidth = window.innerWidth;
-
-    // 🔥 DETECTAR ZOOM DESKTOP (CTRL + rueda)
-    if (event && (event.ctrlKey || event.metaKey)) {
-        console.log("🚫 Zoom desktop detectado");
-        return;
-    }
-
-    // 🔥 DETECTAR ZOOM MOBILE (pinch real)
-    if (window.visualViewport) {
-        const currentScale = window.visualViewport.scale;
-
-        if (Math.abs(currentScale - lastScale) > 0.01) {
-            console.log("🚫 Zoom móvil detectado");
-            lastScale = currentScale;
-            return;
-        }
-    }
-
-    // 🔥 IGNORAR CAMBIOS PEQUEÑOS (zoom falso)
-    if (Math.abs(currentWidth - lastWidth) < 200) {
-        return;
-    }
-
-    lastWidth = currentWidth;
-
-    // 🔥 DEBOUNCE REAL
-    clearTimeout(resizeTimeout);
-
-    resizeTimeout = setTimeout(() => {
-
-        console.log("📐 Resize REAL → recargando PDF");
-
-        if (!cargandoPDF) {
-            loadPDF();
-        }
-
-    }, 300);
-}
-
-// EVENTO
-//window.addEventListener("resize", handleResize);
-
-
-// ===============================
-// 📱 ROTACIÓN (SOLO UNA VEZ)
-// ===============================
-window.addEventListener("orientationchange", () => {
-
-    //console.log("📱 Rotación detectada");
-
-    setTimeout(() => {
-        lastWidth = window.innerWidth; // 🔥 importante
-        loadPDF();
-    }, 400);
-
-});
 
 // ===============================
 // 🔐 CONTROL DE SESIÓN (FIX)
@@ -662,15 +521,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 let initialDistance = null;
 
-// 👇 función zoom
-function aplicarZoom() {
-    const container = document.getElementById("pdfContainer");
-    if (!container) return;
-
-    container.style.transform = `scale(${pdfScale})`;
-    container.style.transformOrigin = "top center";
-}
-
 // 👇 ZOOM RUEDA (DESKTOP)
 document.addEventListener("wheel", (e) => {
 
@@ -683,7 +533,7 @@ document.addEventListener("wheel", (e) => {
 
     pdfScale = Math.min(Math.max(0.5, pdfScale), 3);
 
-    aplicarZoom();
+    loadPDF();
 
 }, { passive: false });
 
@@ -707,7 +557,7 @@ document.addEventListener("touchmove", (e) => {
 
             pdfScale = Math.min(Math.max(0.5, pdfScale), 3);
 
-            aplicarZoom();
+            loadPDF();
 
             initialDistance = distance;
         }
