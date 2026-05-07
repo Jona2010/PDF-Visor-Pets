@@ -73,14 +73,25 @@
 
 <script>
 
-window.pdfjsLib = window['pdfjs-dist/build/pdf'];
+document.addEventListener("DOMContentLoaded", () => {
 
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    if(window["pdfjs-dist/build/pdf"]){
+
+        window.pdfjsLib =
+            window["pdfjs-dist/build/pdf"];
+
+    }else{
+
+        window.pdfjsLib = window.pdfjsLib;
+    }
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+});
 
 </script>
 
-<script defer src="visor.js"></script>
+<script src="visor.js"></script>
 
 </body>
 </html>

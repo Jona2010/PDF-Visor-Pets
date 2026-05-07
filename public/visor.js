@@ -475,7 +475,7 @@ function handleResize(event) {
 }
 
 // EVENTO
-window.addEventListener("resize", handleResize);
+//window.addEventListener("resize", handleResize);
 
 
 // ===============================
