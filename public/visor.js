@@ -355,8 +355,11 @@ async function loadPDF() {
 
                 canvas.style.opacity = "1";
             }
-
+            
             loader.style.display = "none";
+            
+            // 🔓 PDF TERMINÓ COMPLETAMENTE
+            cargandoPDF = false;
 
         }, 100);
 
@@ -382,9 +385,8 @@ async function loadPDF() {
         const loader = document.getElementById("loader");
         loader.style.display = "none";
 
-    } finally {
-        // 🔓 LIBERAR BLOQUE SIEMPRE
         cargandoPDF = false;
+
     }
 }
 
