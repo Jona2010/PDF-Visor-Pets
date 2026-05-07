@@ -49,7 +49,7 @@ async function loginGoogle(){
 
             options: {
                 redirectTo:
-                    window.location.origin + "/visor.html"
+                    window.location.origin
             }
         });
 
