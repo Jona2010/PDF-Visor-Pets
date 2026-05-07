@@ -472,7 +472,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         await supabaseClient.auth.signOut();
         alert("Sesión expirada");
-        window.location.href = "index.html";
+        window.location.href = "visor.html";
         return;
     }
 
