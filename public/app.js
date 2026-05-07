@@ -163,23 +163,41 @@ async function login() {
     if (/Android/i.test(userAgent)) platform = "Android";
     if (/iPhone|iPad|iPod/i.test(userAgent)) platform = "iOS";
 
+    // ===============================
+    // 🔥 GENERAR DEVICE ID ÚNICO
+    // ===============================
+
+    // FORZAR NUEVO DEVICE EN CADA INSTALACIÓN
     let device_id = localStorage.getItem("device_id");
+
+    // 🔥 SI QUIERES REGENERAR AUTOMÁTICAMENTE
+    // DESCOMENTA ESTA LÍNEA:
+    localStorage.removeItem("device_id");
 
     if (!device_id) {
 
-        if (crypto.randomUUID) {
-            device_id = crypto.randomUUID();
-        } else {
-            device_id = generarUUID();
-        }
+        // fingerprint básico
+        const fingerprint = [
+            navigator.userAgent,
+            navigator.language,
+            screen.width,
+            screen.height,
+            Intl.DateTimeFormat().resolvedOptions().timeZone,
+            navigator.platform
+        ].join("|");
+
+        // generar id único
+        const random =
+            crypto.randomUUID
+            ? crypto.randomUUID()
+            : generarUUID();
+
+        device_id = btoa(fingerprint + "|" + random);
 
         localStorage.setItem("device_id", device_id);
     }
 
     //console.log("DEVICE ID:", device_id);
-
-
-
 
     // ===============================
     // 🔍 BUSCAR DISPOSITIVOS DEL USER
@@ -231,7 +249,7 @@ async function login() {
         // alerta
         await supabaseClient
             .from("alerts")
-            .insert([{
+            .upsert([{
                 user_id: user.id,
                 email: user.email,
                 device_id: device_id,
