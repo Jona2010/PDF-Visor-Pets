@@ -324,8 +324,6 @@
     transition:opacity .25s ease;
 
     pointer-events:none;
-
-    touch-action:none;
 }
 
 .loader.active {

@@ -433,23 +433,11 @@ async function loadPDF() {
             return;
         }
 
-        let row;
         const modoMovil = esMovil();
 
         for (let i = 1; i <= pdf.numPages; i++) {
 
-            if( modoMovil || pdfScale > 1 || (i - 1) % 2 === 0) {
-
-                row = document.createElement("div");
-
-                row.style.display = "flex";
-                row.style.justifyContent = "center";
-                row.style.gap = "20px";
-                row.style.width = "auto";
-
-                container.appendChild(row);
-            }
-
+    
             // 🚫 CANCELAR RENDER OBSOLETO
             if(token !== renderToken){
 
@@ -543,7 +531,8 @@ async function loadPDF() {
 
             pageWrapper.appendChild(canvas);
 
-            row.appendChild(pageWrapper);
+            // 🚀 AGREGAR DIRECTO
+            container.appendChild(pageWrapper);
 
             const renderTask =
                 page.render({
