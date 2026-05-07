@@ -211,8 +211,6 @@ async function loadPDF() {
 
         const pdf = await loadingTask.promise;
 
-        const renderQueue = [];
-
         let row;
         const modoMovil = esMovil();
 
@@ -290,7 +288,7 @@ async function loadPDF() {
 
             row.appendChild(pageWrapper);
 
-            const renderTask = page.render({
+            await page.render({
                 canvasContext: ctx,
                 viewport: viewport
             }).promise;
@@ -301,7 +299,6 @@ async function loadPDF() {
             canvas.style.transition = "opacity .2s ease";
         }
 
-        await Promise.all(renderQueue);
         // 👤 LOG
         const { data: { user } } = await supabaseClient.auth.getUser();
 

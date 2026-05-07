@@ -64,25 +64,11 @@
 
 <script>
 
-window.addEventListener("load", () => {
-
-    if(window.pdfjsLib){
-
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
-        console.log("✅ PDF.js cargado");
-
-    }else{
-
-        console.error("❌ PDF.js no cargó");
-    }
-
-});
+window.pdfjsWorker =
+"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
 </script>
 
-<!-- VISOR -->
 <script src="visor.js"></script>
 
 </body>
