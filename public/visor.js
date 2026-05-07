@@ -343,11 +343,9 @@ async function registrarSesionExpirada(user){
     }
 }
 
-// 📥 CARGAR PDF (FIX TOTAL)
+// 📥 CARGAR PDF (FIX TOTAL - 52 PÁGINAS)
 async function loadPDF() {
-
     try {
-
         const container = document.getElementById("pdfContainer");
         const loader = document.getElementById("loader");
 
@@ -355,259 +353,182 @@ async function loadPDF() {
         const area = document.getElementById("areaSelect").value;
 
         // 🔒 VALIDACIONES
-        if (!config.pets[petIndex]) {
-            return;
-        }
-
-        if (!config.pets[petIndex].archivos[area]) {
-
+        if (!config.pets[petIndex] || !config.pets[petIndex].archivos[area]) {
             return;
         }
 
         const fileName = config.pets[petIndex].archivos[area];
 
-        // 🔥 UI
+        // 🔥 UI LIMPIA
         container.classList.remove("loaded");
-        container.innerHTML = "";
+        container.innerHTML = ""; // ✅ LIMPIA DOM COMPLETO
         loader.style.display = "flex";
 
         // 🔐 SUPABASE URL
         const { data, error } = await supabaseClient
             .storage
             .from(config.bucket)
-            .createSignedUrl(fileName, 60);
+            .createSignedUrl(fileName, 3600); // 🔄 1 HORA
 
         if (error) {
-
-            showAlert(
-                "❌ Error cargando PDF",
-                "error"
-            );
-
+            showAlert("❌ Error cargando PDF", "error");
             loader.style.display = "none";
-
-
             return;
         }
 
-        const url = data.signedUrl;
-
-        // 🚀 CANCELAR PDF ANTERIOR
-        if(currentLoadingTask){
-
-            try{
-
+        // 🚀 CANCELAR ANTERIOR
+        if (currentLoadingTask) {
+            try {
                 currentLoadingTask.destroy();
-
-            }catch(err){
-
-                console.warn(
-                    "⚠️ PDF anterior ya destruido"
-                );
+            } catch (err) {
+                console.warn("⚠️ Task anterior destruida");
             }
         }
 
-        // 🚀 NUEVO TOKEN
         const token = ++renderToken;
+        currentLoadingTask = null;
 
-        // 🚀 NUEVO PDF TASK
-        currentLoadingTask =
-            pdfjsLib.getDocument({
+        // 🚀 PDF.js OPTIMIZADO PARA PDFs GRANDES
+        currentLoadingTask = pdfjsLib.getDocument({
+            url: data.signedUrl,
+            disableAutoFetch: false,
+            disableStream: false,
+            rangeChunkSize: 524288, // ✅ 512KB - MEJOR PARA PDFs GRANDES
+            maxImageSize: 4096,     // ✅ LIMITA IMÁGENES
+            cMapUrl: '/pdfjs/cmaps/', // ✅ CMAPS LOCALES
+            cMapPacked: true
+        });
 
-                url:url,
+        const pdf = await currentLoadingTask.promise;
 
-                disableAutoFetch:false,
-
-                disableStream:false,
-
-                rangeChunkSize:262144
-            });
-
-        // 🚀 LOAD PDF
-        const pdf =
-            await currentLoadingTask.promise;
-
-        // 🚫 SI YA HAY OTRO RENDER
-        if(token !== renderToken){
-
+        // 🚫 TOKEN VÁLIDO
+        if (token !== renderToken) {
+            pdf.destroy(); // ✅ SIEMPRE DESTROY
             return;
         }
+
+        const totalPages = pdf.numPages;
+        console.log(`📄 Renderizando ${totalPages} páginas...`);
 
         const modoMovil = esMovil();
+        const renderedPages = []; // ✅ TRACK PÁGINAS
 
-        for (let i = 1; i <= pdf.numPages; i++) {
-
-    
-            // 🚫 CANCELAR RENDER OBSOLETO
-            if(token !== renderToken){
-
-                return;
+        // 🔥 BATCH RENDERIZADO (5 PÁGINAS POR VEZ)
+        for (let batchStart = 1; batchStart <= totalPages; batchStart += 5) {
+            if (token !== renderToken) {
+                break;
             }
 
-            const page = await pdf.getPage(i);
+            const batchEnd = Math.min(batchStart + 4, totalPages);
+            const batchPromises = [];
 
-            const containerWidth =
-                container.clientWidth;
-
-            const baseViewport =
-                page.getViewport({ scale: 1 });
-
-            let scale;
-
-            if (modoMovil) {
-
-                scale =
-                    ((document.documentElement.clientWidth - 20) /
-                    baseViewport.width) * pdfScale;
-
-            } else {
-
-                scale =
-                (
-                    (
-                        pdfScale > 1
-                        ? containerWidth * 0.95
-                        : containerWidth / 2 - 40
-                    )
-                    / baseViewport.width
-                ) * pdfScale;
-            }
-
-            // ✅ CALIDAD REAL PDF
-            const devicePixelRatio =
-                esMovil()
-                ? (window.devicePixelRatio || 2)
-                : 1.5;
-
-            // 🚫 LIMITAR RESOLUCIÓN GIGANTE
-            let finalScale =
-                scale * devicePixelRatio;
-
-            // 🚀 LIMITADOR DESKTOP
-            if(!modoMovil){
-
-                const estimatedWidth =
-                    baseViewport.width * finalScale;
-
-                const MAX_CANVAS_WIDTH = 2200;
-
-                if(estimatedWidth > MAX_CANVAS_WIDTH){
-
-                    finalScale =
-                        MAX_CANVAS_WIDTH /
-                        baseViewport.width;
-                }
-            }
-
-            // 🚀 VIEWPORT FINAL
-            const viewport =
-                page.getViewport({
-
-                    scale: finalScale
-                });
-
-            const canvas =
-                document.createElement("canvas");
-
-            const ctx =
-                canvas.getContext("2d");
-
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-
-            canvas.style.width =
-                (viewport.width / devicePixelRatio)
-                + "px";
-
-            canvas.style.height =
-                (viewport.height / devicePixelRatio)
-                + "px";
-
-            const pageWrapper =
-                document.createElement("div");
-
-            pageWrapper.className =
-                "page-wrapper";
-
-            pageWrapper.appendChild(canvas);
-
-            // 🚀 AGREGAR DIRECTO
-            container.appendChild(pageWrapper);
-
-            const renderTask =
-                page.render({
-
-                    canvasContext: ctx,
-
-                    viewport: viewport
-                });
-
-            await renderTask.promise;
-            // 🚀 LIBERAR MEMORIA
-            page.cleanup();
-
-            // 🚫 RENDER OBSOLETO
-            if(token !== renderToken){
-
-                try{
-
-                    renderTask.cancel();
-
-                }catch(e){}
-
-                return;
-            }
-
-            canvas.style.opacity = "1";
-            canvas.style.transition = "opacity .2s ease";
-
-            // 🚀 LIBERAR UI THREAD
-            if(i % 3 === 0){
-
-                await new Promise(resolve =>
-                    requestAnimationFrame(resolve)
+            // 🚀 PROCESAR BATCH
+            for (let i = batchStart; i <= batchEnd; i++) {
+                batchPromises.push(
+                    renderSinglePage(pdf, i, container, modoMovil, token)
                 );
             }
+
+            // ⏳ ESPERAR BATCH
+            await Promise.all(batchPromises);
+            
+            // 🧹 LIMPIA MEMORIA CADA 5 PÁGINAS
+            if (batchStart % 15 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                console.log(`✅ Batch ${batchStart}/${totalPages} completado`);
+            }
         }
+
+        // ✅ DESTROY PDF - CRÍTICO
+        pdf.destroy();
+        currentLoadingTask = null;
 
         // 👤 LOG
         const { data: { user } } = await supabaseClient.auth.getUser();
-
         if (user) {
             await supabaseClient.from("logs").insert({
                 user_email: user.email,
                 pet: config.pets[petIndex].nombre,
-                area: area + " | VISUALIZACIÓN PDF"
+                area: `${area} | ${totalPages} PÁGINAS`
             });
         }
 
         // 🔥 UI FINAL
         container.classList.add("loaded");
-
-        // ✅ TERMINÓ TODO EL PDF
         loader.style.display = "none";
 
-        currentLoadingTask = null;
-
     } catch (err) {
-
-        console.error(
-            "❌ Error en loadPDF:",
-            err
-        );
-
-        const loader =
-            document.getElementById(
-                "loader"
-            );
-
-        if(loader){
-
-            loader.style.display =
-                "none";
+        console.error("❌ Error loadPDF:", err);
+        if (currentLoadingTask) {
+            try {
+                currentLoadingTask.destroy();
+            } catch (e) {}
         }
-
+        document.getElementById("loader").style.display = "none";
         currentLoadingTask = null;
+        showAlert(`❌ Error PDF: ${err.message}`, "error");
+    }
+}
+
+// 🎯 FUNCIÓN RENDER PÁGINA INDIVIDUAL (OPTIMIZADA)
+async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
+    if (token !== renderToken) return null;
+
+    try {
+        const page = await pdf.getPage(pageNum);
+        
+        // 📏 CÁLCULO ESCALA OPTIMIZADO
+        const containerWidth = container.clientWidth;
+        const baseViewport = page.getViewport({ scale: 1 });
+        
+        let scale = modoMovil 
+            ? ((window.innerWidth - 20) / baseViewport.width) * pdfScale
+            : (containerWidth * 0.95 / baseViewport.width) * pdfScale;
+
+        const devicePixelRatio = modoMovil ? (window.devicePixelRatio || 2) : 1.5;
+        let finalScale = Math.min(scale * devicePixelRatio, 2.5); // ✅ LÍMITE
+
+        const viewport = page.getViewport({ scale: finalScale });
+        
+        // 🖼️ CANVAS OPTIMIZADO
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d", { alpha: false }); // ✅ SIN ALPHA
+        
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        
+        canvas.style.width = `${Math.floor(viewport.width / devicePixelRatio)}px`;
+        canvas.style.height = `${Math.floor(viewport.height / devicePixelRatio)}px`;
+        canvas.style.opacity = "0";
+        canvas.style.transition = "opacity 0.3s ease";
+
+        // 📦 WRAPPER
+        const pageWrapper = document.createElement("div");
+        pageWrapper.className = "page-wrapper";
+        pageWrapper.appendChild(canvas);
+        container.appendChild(pageWrapper);
+
+        // 🎨 RENDER
+        const renderTask = page.render({
+            canvasContext: ctx,
+            viewport: viewport
+        });
+
+        await renderTask.promise;
+        
+        // 🧹 LIMPIA PÁGINA INMEDIATO
+        page.cleanup();
+        
+        // ✨ ANIMACIÓN
+        requestAnimationFrame(() => {
+            canvas.style.opacity = "1";
+        });
+
+        return pageNum;
+        
+    } catch (err) {
+        console.warn(`⚠️ Error página ${pageNum}:`, err);
+        return null;
     }
 }
 
