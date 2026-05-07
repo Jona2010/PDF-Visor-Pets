@@ -241,7 +241,7 @@ async function loadPDF() {
             if (modoMovil) {
 
                 scale =
-                    ((containerWidth * 0.95) /
+                    ((window.innerWidth - 20) /
                     baseViewport.width) * pdfScale;
 
             } else {
