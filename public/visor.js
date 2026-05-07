@@ -11,7 +11,10 @@ let config = null;
 let pdfScale = 1;
 
 // 🔒 EVITAR MÚLTIPLES CARGAS PDF
-let cargandoPDF = false;
+// 🚀 CONTROL RENDER PDF
+let renderToken = 0;
+
+let currentLoadingTask = null;
 
 // ===============================
 // 🔐 VALIDAR SESIÓN GOOGLE
@@ -340,20 +343,8 @@ async function registrarSesionExpirada(user){
     }
 }
 
-// 🔒 BLOQUE GLOBAL (agregar arriba del archivo)
-let cargandoPDF = false;
-
-
 // 📥 CARGAR PDF (FIX TOTAL)
 async function loadPDF() {
-
-    // 🚫 EVITAR LOOP INFINITO
-    if (cargandoPDF) {
-        //console.log("⛔ Ya está cargando → evitar loop");
-        return;
-    }
-
-    cargandoPDF = true;
 
     try {
 
@@ -365,14 +356,11 @@ async function loadPDF() {
 
         // 🔒 VALIDACIONES
         if (!config.pets[petIndex]) {
-
-            cargandoPDF = false;
             return;
         }
 
         if (!config.pets[petIndex].archivos[area]) {
 
-            cargandoPDF = false;
             return;
         }
 
@@ -380,7 +368,7 @@ async function loadPDF() {
 
         // 🔥 UI
         container.classList.remove("loaded");
-        container.replaceChildren();
+        container.innerHTML = "";
         loader.style.display = "flex";
 
         // 🔐 SUPABASE URL
@@ -398,33 +386,59 @@ async function loadPDF() {
 
             loader.style.display = "none";
 
-            cargandoPDF = false;
 
             return;
         }
 
         const url = data.signedUrl;
 
-        // 📄 PDF
-        const loadingTask = pdfjsLib.getDocument({
+        // 🚀 CANCELAR PDF ANTERIOR
+        if(currentLoadingTask){
 
-            url: url,
+            try{
 
-            disableAutoFetch: true,
+                currentLoadingTask.destroy();
 
-            disableStream: false,
+            }catch(err){
 
-            rangeChunkSize: 65536
-        });
+                console.warn(
+                    "⚠️ PDF anterior ya destruido"
+                );
+            }
+        }
 
-        const pdf = await loadingTask.promise;
+        // 🚀 NUEVO TOKEN
+        const token = ++renderToken;
+
+        // 🚀 NUEVO PDF TASK
+        currentLoadingTask =
+            pdfjsLib.getDocument({
+
+                url:url,
+
+                disableAutoFetch:false,
+
+                disableStream:false,
+
+                rangeChunkSize:262144
+            });
+
+        // 🚀 LOAD PDF
+        const pdf =
+            await currentLoadingTask.promise;
+
+        // 🚫 SI YA HAY OTRO RENDER
+        if(token !== renderToken){
+
+            return;
+        }
 
         let row;
         const modoMovil = esMovil();
 
         for (let i = 1; i <= pdf.numPages; i++) {
 
-            if (modoMovil || (i - 1) % 2 === 0) {
+            if( modoMovil || pdfScale > 1 || (i - 1) % 2 === 0) {
 
                 row = document.createElement("div");
 
@@ -434,6 +448,12 @@ async function loadPDF() {
                 row.style.width = "auto";
 
                 container.appendChild(row);
+            }
+
+            // 🚫 CANCELAR RENDER OBSOLETO
+            if(token !== renderToken){
+
+                return;
             }
 
             const page = await pdf.getPage(i);
@@ -455,8 +475,14 @@ async function loadPDF() {
             } else {
 
                 scale =
-                    ((containerWidth / 2 - 40) /
-                    baseViewport.width) * pdfScale;
+                (
+                    (
+                        pdfScale > 1
+                        ? containerWidth * 0.95
+                        : containerWidth / 2 - 40
+                    )
+                    / baseViewport.width
+                ) * pdfScale;
             }
 
             // ✅ CALIDAD REAL PDF
@@ -465,9 +491,32 @@ async function loadPDF() {
                 ? (window.devicePixelRatio || 2)
                 : 1.5;
 
-            const viewport = page.getViewport({
-                scale: scale * devicePixelRatio
-            });
+            // 🚫 LIMITAR RESOLUCIÓN GIGANTE
+            let finalScale =
+                scale * devicePixelRatio;
+
+            // 🚀 LIMITADOR DESKTOP
+            if(!modoMovil){
+
+                const estimatedWidth =
+                    baseViewport.width * finalScale;
+
+                const MAX_CANVAS_WIDTH = 2200;
+
+                if(estimatedWidth > MAX_CANVAS_WIDTH){
+
+                    finalScale =
+                        MAX_CANVAS_WIDTH /
+                        baseViewport.width;
+                }
+            }
+
+            // 🚀 VIEWPORT FINAL
+            const viewport =
+                page.getViewport({
+
+                    scale: finalScale
+                });
 
             const canvas =
                 document.createElement("canvas");
@@ -496,13 +545,40 @@ async function loadPDF() {
 
             row.appendChild(pageWrapper);
 
-            await page.render({
-                canvasContext: ctx,
-                viewport: viewport
-            }).promise;
+            const renderTask =
+                page.render({
+
+                    canvasContext: ctx,
+
+                    viewport: viewport
+                });
+
+            await renderTask.promise;
+            // 🚀 LIBERAR MEMORIA
+            page.cleanup();
+
+            // 🚫 RENDER OBSOLETO
+            if(token !== renderToken){
+
+                try{
+
+                    renderTask.cancel();
+
+                }catch(e){}
+
+                return;
+            }
 
             canvas.style.opacity = "1";
             canvas.style.transition = "opacity .2s ease";
+
+            // 🚀 LIBERAR UI THREAD
+            if(i % 3 === 0){
+
+                await new Promise(resolve =>
+                    requestAnimationFrame(resolve)
+                );
+            }
         }
 
         // 👤 LOG
@@ -522,15 +598,27 @@ async function loadPDF() {
         // ✅ TERMINÓ TODO EL PDF
         loader.style.display = "none";
 
-        cargandoPDF = false;
+        currentLoadingTask = null;
 
     } catch (err) {
 
-        console.error("❌ Error en loadPDF:", err);
+        console.error(
+            "❌ Error en loadPDF:",
+            err
+        );
 
-        loader.style.display = "none";
+        const loader =
+            document.getElementById(
+                "loader"
+            );
 
-        cargandoPDF = false;
+        if(loader){
+
+            loader.style.display =
+                "none";
+        }
+
+        currentLoadingTask = null;
     }
 }
 
@@ -882,6 +970,9 @@ document.addEventListener(
             // 🚀 LOAD CONFIG
             await loadConfig();
 
+            // 🚀 INIT PDF EVENTS
+            initPDFZoom();
+
         }catch(err){
 
             console.error(
@@ -897,6 +988,36 @@ document.addEventListener(
     }
 );
 
+function initPDFZoom(){
+
+    const pdfContainer =
+        document.getElementById(
+            "pdfContainer"
+        );
+
+    if(!pdfContainer){
+        return;
+    }
+
+    // ===============================
+    // 🖥️ ZOOM RUEDA
+    // ===============================
+    pdfContainer.addEventListener(
+        "wheel",
+        handleWheelZoom,
+        { passive:false }
+    );
+
+    // ===============================
+    // 📱 PINCH
+    // ===============================
+    pdfContainer.addEventListener(
+        "touchmove",
+        handlePinchZoom,
+        { passive:false }
+    );
+}
+
 // ===============================
 // 🔍 ZOOM PDF
 // ===============================
@@ -905,131 +1026,148 @@ let initialDistance = null;
 
 let zoomTimeout = null;
 
-// 📄 CONTENEDOR
-const pdfContainer =
-    document.getElementById(
-        "pdfContainer"
+// ===============================
+// 🚀 INIT PDF EVENTS
+// ===============================
+function initPDFZoom(){
+
+    const pdfContainer =
+        document.getElementById(
+            "pdfContainer"
+        );
+
+    if(!pdfContainer){
+        return;
+    }
+
+    // ===============================
+    // 🖥️ ZOOM RUEDA
+    // ===============================
+    pdfContainer.addEventListener(
+        "wheel",
+        handleWheelZoom,
+        { passive:false }
     );
 
-// ===============================
-// 🖥️ ZOOM RUEDA DESKTOP
-// ===============================
-pdfContainer.addEventListener(
-    "wheel",
-    (e) => {
-
-        // 🚫 SOLO CTRL + WHEEL
-        if(!e.ctrlKey){
-            return;
-        }
-
-        e.preventDefault();
-
-        // 🚫 EVITAR SPAM
-        if(zoomTimeout){
-            return;
-        }
-
-        // 🔍 ZOOM
-        if(e.deltaY < 0){
-
-            pdfScale += 0.1;
-
-        }else{
-
-            pdfScale -= 0.1;
-        }
-
-        // 🔒 LIMITES
-        pdfScale =
-            Math.min(
-                Math.max(0.6, pdfScale),
-                3
-            );
-
-        // 🚀 THROTTLE
-        zoomTimeout =
-            setTimeout(async () => {
-
-                await loadPDF();
-
-                zoomTimeout = null;
-
-            }, 120);
-
-    },
-    { passive:false }
-);
+    // ===============================
+    // 📱 PINCH
+    // ===============================
+    pdfContainer.addEventListener(
+        "touchmove",
+        handlePinchZoom,
+        { passive:false }
+    );
+}
 
 // ===============================
-// 📱 PINCH MOBILE
+// 🖥️ WHEEL ZOOM
 // ===============================
-pdfContainer.addEventListener(
-    "touchmove",
-    async (e) => {
+async function handleWheelZoom(e){
 
-        if(e.touches.length !== 2){
-            return;
-        }
+    // 🚫 SOLO CTRL + WHEEL
+    if(!e.ctrlKey){
+        return;
+    }
 
-        e.preventDefault();
+    e.preventDefault();
 
-        const dx =
-            e.touches[0].clientX -
-            e.touches[1].clientX;
+    // 🚫 EVITAR SPAM
+    if(zoomTimeout){
+        return;
+    }
 
-        const dy =
-            e.touches[0].clientY -
-            e.touches[1].clientY;
+    // 🔍 ZOOM
+    if(e.deltaY < 0){
 
-        const distance =
-            Math.sqrt(dx * dx + dy * dy);
+        pdfScale += 0.1;
 
-        // 🚀 INIT
-        if(!initialDistance){
+    }else{
 
-            initialDistance = distance;
+        pdfScale -= 0.1;
+    }
 
-            return;
-        }
+    // 🔒 LIMITES
+    pdfScale =
+        Math.min(
+            Math.max(0.6, pdfScale),
+            3
+        );
 
-        const diff =
-            distance - initialDistance;
+    // 🚀 THROTTLE
+    zoomTimeout =
+        setTimeout(async () => {
 
-        // 🚫 FILTRAR MICRO MOVIMIENTOS
-        if(Math.abs(diff) < 8){
-            return;
-        }
+            await loadPDF();
 
-        // 🔍 ZOOM
-        pdfScale += diff * 0.0008;
+            zoomTimeout = null;
 
-        // 🔒 LIMITES
-        pdfScale =
-            Math.min(
-                Math.max(0.6, pdfScale),
-                3
-            );
+        }, 120);
+}
+
+// ===============================
+// 📱 PINCH ZOOM
+// ===============================
+async function handlePinchZoom(e){
+
+    if(e.touches.length !== 2){
+        return;
+    }
+
+    e.preventDefault();
+
+    const dx =
+        e.touches[0].clientX -
+        e.touches[1].clientX;
+
+    const dy =
+        e.touches[0].clientY -
+        e.touches[1].clientY;
+
+    const distance =
+        Math.sqrt(dx * dx + dy * dy);
+
+    // 🚀 INIT
+    if(!initialDistance){
 
         initialDistance = distance;
 
-        // 🚫 EVITAR SPAM
-        if(zoomTimeout){
-            return;
-        }
+        return;
+    }
 
-        zoomTimeout =
-            setTimeout(async () => {
+    const diff =
+        distance - initialDistance;
 
-                await loadPDF();
+    // 🚫 FILTRAR MICRO MOVIMIENTOS
+    if(Math.abs(diff) < 8){
+        return;
+    }
 
-                zoomTimeout = null;
+    // 🔍 ZOOM
+    pdfScale += diff * 0.0008;
 
-            }, 150);
+    // 🔒 LIMITES
+    pdfScale =
+        Math.min(
+            Math.max(0.6, pdfScale),
+            3
+        );
 
-    },
-    { passive:false }
-);
+    initialDistance = distance;
+
+    // 🚫 EVITAR SPAM
+    if(zoomTimeout){
+        return;
+    }
+
+    zoomTimeout =
+        setTimeout(async () => {
+
+            await loadPDF();
+
+            zoomTimeout = null;
+
+        }, 150);
+}
 
 // ===============================
 // 📱 TOUCH END
