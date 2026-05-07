@@ -200,7 +200,7 @@ async function loadPDF() {
         let row;
         const modoMovil = esMovil();
 
-        const paginasIniciales = esMovil() ? 2 : 4;
+        const paginasIniciales = esMovil() ? 4 : 8;
 
         for (let i = 1; i <= Math.min(pdf.numPages, paginasIniciales); i++) {
 
@@ -258,6 +258,108 @@ async function loadPDF() {
             canvas.style.opacity = "1";
         }
 
+        // =====================================
+        // 🚀 CARGAR RESTO DEL PDF
+        // =====================================
+
+        setTimeout(async () => {
+        
+            let row;
+
+            for (
+                let i = paginasIniciales + 1;
+                i <= pdf.numPages;
+                i++
+            ) {
+
+                if (modoMovil || (i - 1) % 2 === 0) {
+
+                    row = document.createElement("div");
+
+                    row.style.display = "flex";
+                    row.style.justifyContent = "center";
+                    row.style.gap = "20px";
+                    row.style.width = "100%";
+
+                    container.appendChild(row);
+                }
+
+                const page = await pdf.getPage(i);
+
+                const containerWidth =
+                    container.clientWidth;
+
+                const baseViewport =
+                    page.getViewport({ scale: 1 });
+
+                let scale;
+
+                if (modoMovil) {
+
+                    scale =
+                        ((containerWidth * 0.95) /
+                        baseViewport.width) * pdfScale;
+
+                } else {
+
+                    scale =
+                        ((containerWidth / 2 - 40) /
+                        baseViewport.width) * pdfScale;
+                }
+
+                const devicePixelRatio =
+                    esMovil()
+                    ? 1.2
+                    : window.devicePixelRatio || 1;
+
+                const viewport = page.getViewport({
+                    scale: scale * devicePixelRatio
+                });
+
+                const canvas =
+                    document.createElement("canvas");
+
+                const ctx =
+                    canvas.getContext("2d");
+
+                canvas.style.willChange = "transform";
+
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                canvas.style.width =
+                    (viewport.width / devicePixelRatio)
+                    + "px";
+
+                canvas.style.height =
+                    (viewport.height / devicePixelRatio)
+                    + "px";
+
+                const pageWrapper =
+                    document.createElement("div");
+
+                pageWrapper.className =
+                    "page-wrapper";
+
+                pageWrapper.appendChild(canvas);
+
+                row.appendChild(pageWrapper);
+
+                await page.render({
+                    canvasContext: ctx,
+                    viewport: viewport
+                }).promise;
+
+                canvas.style.transition =
+                    "opacity .3s ease";
+
+                canvas.style.opacity = "1";
+            }
+
+            loader.style.display = "none";
+
+        }, 100);
+
         // 👤 LOG
         const { data: { user } } = await supabaseClient.auth.getUser();
 
@@ -270,7 +372,7 @@ async function loadPDF() {
         }
 
         // 🔥 UI FINAL
-        loader.style.display = "none";
+        loader.innerHTML = "<p>Cargando páginas restantes...</p>";
         container.classList.add("loaded");
 
     } catch (err) {
