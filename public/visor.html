@@ -4,14 +4,10 @@
 
 <meta charset="UTF-8">
 
+<!-- 🚀 VIEWPORT PROFESIONAL -->
 <meta
     name="viewport"
-    content="
-    width=device-width,
-    initial-scale=1,
-    maximum-scale=1,
-    user-scalable=no,
-    viewport-fit=cover">
+    content="width=device-width, initial-scale=1, viewport-fit=cover">
 
 <title>INTELLIALL | Visor PETS</title>
 
@@ -23,9 +19,14 @@
     name="robots"
     content="noindex, nofollow">
 
+<!-- 🚀 PERFORMANCE -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+
 <link rel="stylesheet" href="styles_visor.css">
 
 </head>
+
 <body>
 
 <div class="app">
@@ -34,22 +35,31 @@
     <header class="header">
 
         <div class="logo">
+
             <span>INTELLIALL</span>
+
             <small>PETS Viewer</small>
+
         </div>
 
         <div class="controls-bar">
+
             <select id="petSelect"></select>
+
             <select id="areaSelect"></select>
+
         </div>
 
         <div class="actions">
+
             <button
                 onclick="logout()"
                 class="btn-logout">
 
                 Salir
+
             </button>
+
         </div>
 
     </header>
@@ -83,19 +93,24 @@
 <!-- 🔷 PDF.JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
+<!-- 🚀 PDF WORKER -->
 <script>
 
-if(window.pdfjsLib){
+window.addEventListener("load", () => {
 
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    if(window.pdfjsLib){
 
-    console.log("✅ PDF.js Worker OK");
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-}else{
+        console.log("✅ PDF.js Worker OK");
 
-    console.error("❌ PDF.js no cargó");
-}
+    }else{
+
+        console.error("❌ PDF.js no cargó");
+    }
+
+});
 
 </script>
 

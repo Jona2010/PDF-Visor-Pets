@@ -79,23 +79,36 @@
 
 .header {
 
+    flex: none;
+
     display: grid;
+
     grid-template-columns: auto 1fr auto;
 
     align-items: center;
 
+    gap: 16px;
+
     padding: 14px 24px;
 
-    background: rgba(2,6,23,.85);
+    background: rgba(2,6,23,.92);
 
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 
     border-bottom: 1px solid #1e293b;
 
-    position: relative;
+    position: sticky;
 
-    z-index: 100;
+    top: 0;
+
+    z-index: 1000;
+
+    width: 100%;
+
+    box-sizing: border-box;
+
+    overflow: hidden;
 }
 
 /* LOGO */
@@ -217,14 +230,13 @@
 }
 
 /* CONTENEDOR PDF */
-.pdf-view {
+.pdf-view{
 
-    flex:1;
+    position:absolute;
 
-    overflow-y:auto;
-    overflow-x:auto;
+    inset:0;
 
-    touch-action:pan-x pan-y;
+    overflow:auto;
 
     -webkit-overflow-scrolling:touch;
 
@@ -232,16 +244,13 @@
     flex-direction:column;
     align-items:center;
 
-    padding:40px 20px;
+    gap:24px;
 
-    gap:40px;
+    padding:20px;
 
-    background:
-        radial-gradient(
-            circle at center,
-            #020617,
-            #000
-        );
+    touch-action:pan-x pan-y;
+
+    background:#111827;
 }
 
 /* FILAS */
@@ -259,32 +268,26 @@
 }
 
 /* CANVAS */
-.pdf-view canvas {
+.pdf-view canvas{
 
     display:block;
-
-    width:auto !important;
-    max-width:none !important;
-
-    height:auto !important;
 
     background:white;
 
     border-radius:10px;
 
-    image-rendering:auto;
+    image-rendering:high-quality;
+
+    image-rendering:-webkit-optimize-contrast;
 
     backface-visibility:hidden;
 
     transform:translateZ(0);
 
     box-shadow:
-        0 10px 25px rgba(0,0,0,.5),
-        0 0 0 1px rgba(255,255,255,.05);
+        0 10px 25px rgba(0,0,0,.4);
 
-    transition:
-        opacity .2s ease,
-        transform .2s ease;
+    flex:none;
 }
 
 /* HOVER */
@@ -399,238 +402,6 @@
     background:#334155;
 }
 
-/* =========================
-📱 MOBILE PDF FIX
-========================= */
-
-@media (max-width:768px){
-
-    .header{
-
-        display:flex;
-
-        flex-direction:column;
-
-        gap:10px;
-
-        padding:12px;
-    }
-
-    .logo{
-        text-align:center;
-    }
-
-    .controls-bar{
-
-        flex-direction:column;
-
-        width:100%;
-
-        gap:10px;
-    }
-
-    .controls-bar select{
-
-        width:100%;
-
-        min-width:unset;
-    }
-
-    .actions{
-        width:100%;
-    }
-
-    .btn-logout{
-
-        width:100%;
-
-        height:45px;
-    }
-
-    /* PDF */
-    .pdf-view{
-
-        padding:10px;
-
-        gap:20px;
-
-        overflow:auto;
-
-        -webkit-overflow-scrolling:touch;
-    }
-
-    .pdf-view > div{
-
-        flex-direction:column;
-
-        align-items:center;
-
-        gap:20px;
-
-        width:max-content;
-
-        min-width:100%;
-    }
-
-    .pdf-view canvas{
-
-        width:auto !important;
-
-        max-width:none !important;
-
-        height:auto !important;
-
-        border-radius:12px;
-    }
-}
-
-/* ==========================================
-📱 MOBILE PDF VIEWER FIX
-========================================== */
-
-@media (max-width:768px){
-
-    /* APP */
-    .app{
-        height:100dvh;
-    }
-
-    /* HEADER */
-    .header{
-
-        display:flex;
-
-        flex-direction:column;
-
-        gap:10px;
-
-        padding:12px 14px;
-
-        position:relative;
-    }
-
-    .logo{
-        text-align:center;
-    }
-
-    .logo span{
-        font-size:20px;
-    }
-
-    .logo small{
-        font-size:12px;
-    }
-
-    /* CONTROLES */
-    .controls-bar{
-
-        width:100%;
-
-        flex-direction:column;
-
-        gap:10px;
-    }
-
-    .controls-bar select{
-
-        width:100%;
-
-        min-width:unset;
-
-        height:46px;
-
-        font-size:15px;
-    }
-
-    /* BOTÓN */
-    .actions{
-
-        width:100%;
-
-        justify-content:center;
-    }
-
-    .btn-logout{
-
-        width:100%;
-
-        height:46px;
-
-        font-size:15px;
-    }
-
-    /* VIEWER */
-    .viewer{
-
-        overflow:hidden;
-    }
-
-    /* PDF */
-    .pdf-view{
-
-        padding:14px 10px 30px;
-
-        gap:18px;
-
-        overflow:auto;
-
-        align-items:flex-start;
-
-        -webkit-overflow-scrolling:touch;
-
-        touch-action:pan-x pan-y;
-    }
-
-    /* FILAS */
-    .pdf-view > div{
-
-        flex-direction:column;
-
-        align-items:center;
-
-        gap:18px;
-
-        width:max-content;
-
-        min-width:100%;
-    }
-
-    /* CANVAS */
-    .pdf-view canvas{
-
-        width:auto !important;
-
-        max-width:none !important;
-
-        height:auto !important;
-
-        border-radius:8px;
-
-        image-rendering:auto;
-
-        backface-visibility:hidden;
-
-        transform:translateZ(0);
-
-        box-shadow:
-            0 8px 18px rgba(0,0,0,.45);
-    }
-
-    .pdf-view canvas:hover{
-        transform:none;
-    }
-
-    /* LOADER */
-    .loader p{
-
-        font-size:13px;
-
-        text-align:center;
-
-        padding:0 20px;
-    }
-}
-
 /* ==========================================
 📲 EXTRA PEQUEÑOS (420px o menos)
 ========================================== */
@@ -700,9 +471,9 @@ body{
     width:100%;
     height:100%;
 
-    overflow:hidden auto;
+    overflow:hidden;
 
-    touch-action:manipulation;
+    background:#020617;
 
     overscroll-behavior:none;
 
@@ -710,19 +481,23 @@ body{
     user-select:none;
 
     -webkit-touch-callout:none;
+
+    position:fixed;
+    inset:0;
 }
 
 /* APP */
 .app{
 
-    width:100%;
-
-    height:100dvh;
-
-    overflow:hidden;
+    position:fixed;
+    inset:0;
 
     display:flex;
     flex-direction:column;
+
+    overflow:hidden;
+
+    background:#020617;
 }
 
 /* VISOR */
@@ -824,11 +599,20 @@ body{
 }
 
 /* ==========================================
-📱 MOBILE FIX
+📱 MOBILE PDF VIEWER PRO FIX
 ========================================== */
 
 @media (max-width:768px){
 
+    /* APP */
+    .app{
+
+        height:100dvh;
+
+        overflow:hidden;
+    }
+
+    /* HEADER */
     .header{
 
         display:flex;
@@ -837,9 +621,27 @@ body{
 
         gap:10px;
 
-        padding:12px;
+        padding:12px 14px;
+
+        flex:none;
     }
 
+    .logo{
+
+        text-align:center;
+    }
+
+    .logo span{
+
+        font-size:20px;
+    }
+
+    .logo small{
+
+        font-size:12px;
+    }
+
+    /* CONTROLES */
     .controls-bar{
 
         width:100%;
@@ -852,45 +654,131 @@ body{
     }
 
     .controls-bar select{
+
         width:100%;
+
+        min-width:unset;
+
+        height:46px;
+
+        font-size:15px;
     }
 
+    /* BOTÓN */
     .actions{
+
         width:100%;
     }
 
     .btn-logout{
+
         width:100%;
+
+        height:46px;
+
+        font-size:15px;
     }
 
+    /* VIEWER */
+    .viewer{
+
+        flex:1;
+
+        min-height:0;
+
+        overflow:hidden;
+    }
+
+    /* PDF CONTAINER */
     .pdf-view{
 
-        overflow-x:auto;
+        position:absolute;
 
-        overflow-y:auto;
+        inset:0;
+
+        overflow:auto;
+
+        -webkit-overflow-scrolling:touch;
+
+        touch-action:pan-x pan-y;
 
         padding:12px;
 
-        align-items:flex-start;
-    }
+        gap:18px;
 
-    .pdf-view > div{
+        display:flex;
 
         flex-direction:column;
+
+        align-items:flex-start;
+
+        background:#111827;
+    }
+
+    /* FILAS */
+    .pdf-view > div{
+
+        display:flex;
+
+        flex-direction:column;
+
+        align-items:center;
+
+        gap:18px;
 
         width:max-content;
 
         min-width:100%;
-
-        align-items:center;
     }
 
+    /* PÁGINAS */
+    .page-wrapper{
+
+        flex:none;
+
+        overflow:visible;
+    }
+
+    /* PDF */
     .pdf-view canvas{
+
+        display:block;
 
         width:auto !important;
 
-        max-width:unset !important;
-
         height:auto !important;
+
+        max-width:none !important;
+
+        background:white;
+
+        border-radius:10px;
+
+        image-rendering:auto;
+
+        image-rendering:-webkit-optimize-contrast;
+
+        backface-visibility:hidden;
+
+        transform:translateZ(0);
+
+        box-shadow:
+            0 8px 18px rgba(0,0,0,.45);
+    }
+
+    /* HOVER OFF */
+    .pdf-view canvas:hover{
+
+        transform:none !important;
+    }
+
+    /* LOADER */
+    .loader p{
+
+        font-size:13px;
+
+        text-align:center;
+
+        padding:0 20px;
     }
 }

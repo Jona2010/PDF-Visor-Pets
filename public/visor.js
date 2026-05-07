@@ -459,11 +459,11 @@ async function loadPDF() {
                     baseViewport.width) * pdfScale;
             }
 
-            // ✅ CALIDAD
+            // ✅ CALIDAD REAL PDF
             const devicePixelRatio =
                 esMovil()
-                ? 2
-                : window.devicePixelRatio || 1.8;
+                ? (window.devicePixelRatio || 2)
+                : 1.5;
 
             const viewport = page.getViewport({
                 scale: scale * devicePixelRatio
