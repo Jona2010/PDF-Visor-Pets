@@ -35,6 +35,7 @@ let documentoPDF = null;             // Referencia al documento PDF cargado
 let cargando = false;                // Bandera para evitar múltiples cargas
 let totalPaginas = 0;                // Total de páginas del PDF actual
 let renderCancelado = false;         // Bandera para cancelar renderizado
+let idCargaActual = 0;               // ✅ NUEVO: ID único por carga para invalidar renders obsoletos
 
 // Variables para zoom táctil
 let distanciaInicial = null;
@@ -357,15 +358,18 @@ async function renderizarPagina(documentoPDF, numeroPagina, contenedor, esMovil)
 }
 
 // ===============================
-// 📥 CARGAR Y RENDERIZAR PDF COMPLETO (SIN TOKEN)
+// 📥 CARGAR Y RENDERIZAR PDF COMPLETO — CORREGIDO
 // ===============================
 async function cargarPDF() {
-    // Evitar múltiples cargas simultáneas
     if (cargando) {
-        console.log("⚠️ Ya hay una carga en progreso, esperando...");
+        console.log("⚠️ Ya hay una carga en progreso, ignorando...");
         return;
     }
-    
+
+    // ✅ Incrementar ID de carga para invalidar cualquier render previo
+    idCargaActual++;
+    const miIdCarga = idCargaActual;
+
     try {
         const contenedor = document.getElementById("pdfContainer");
         const loader = document.getElementById("loader");
@@ -373,115 +377,96 @@ async function cargarPDF() {
         const selectorArea = document.getElementById("areaSelect");
         const indiceMascota = selectorMascota.value;
         const areaSeleccionada = selectorArea.value;
-        
-        // Validar configuración
+
         if (!configuracion?.pets?.[indiceMascota]?.archivos?.[areaSeleccionada]) {
-            console.error("❌ Configuración inválida para el área seleccionada");
+            console.error("❌ Configuración inválida");
             return;
         }
-        
+
         const nombreArchivo = configuracion.pets[indiceMascota].archivos[areaSeleccionada];
-        
-        // Marcar inicio de carga
+
         cargando = true;
-        renderCancelado = false;
-        
-        // Limpiar contenedor y mostrar loader
         contenedor.innerHTML = "";
         loader.style.display = "flex";
-        
-        // Actualizar texto del loader
+
         const textoProgreso = document.getElementById("progressText");
-        if (textoProgreso) {
-            textoProgreso.textContent = "Descargando documento...";
+        if (textoProgreso) textoProgreso.textContent = "Descargando documento...";
+
+        // ✅ Limpiar tarea/documento ANTERIOR de forma segura
+        if (tareaActual) {
+            try { tareaActual.destroy(); } catch (e) {}
+            tareaActual = null;
         }
-        
-        // Obtener URL firmada del PDF
+        if (documentoPDF) {
+            try { documentoPDF.destroy(); } catch (e) {}
+            documentoPDF = null;
+        }
+
+        // --- Obtener URL del PDF (sin cambios) ---
         let urlPdf;
-        
         try {
             const { data: urlData, error: urlError } = await supabaseClient
-                .storage
-                .from(configuracion.bucket)
+                .storage.from(configuracion.bucket)
                 .createSignedUrl(nombreArchivo, 3600);
-            
+
             if (urlError) throw urlError;
             urlPdf = urlData.signedUrl;
-            console.log("✅ URL firmada obtenida");
-            
-            // 🔥 Fallback para Brave
+
             if (esBrave()) {
-                console.log("🦁 Brave detectado - Verificando URL...");
                 try {
                     const testResponse = await fetch(urlPdf, { method: 'HEAD', mode: 'cors' });
-                    if (!testResponse.ok) {
-                        throw new Error(`HTTP ${testResponse.status}`);
-                    }
-                } catch (braveError) {
-                    console.warn("⚠️ Brave: Usando URL pública alternativa");
-                    const { data: publicData } = supabaseClient
-                        .storage
-                        .from(configuracion.bucket)
-                        .getPublicUrl(nombreArchivo);
-                    
-                    if (publicData?.publicUrl) {
-                        urlPdf = publicData.publicUrl;
-                    }
+                    if (!testResponse.ok) throw new Error(`HTTP ${testResponse.status}`);
+                } catch {
+                    const { data: publicData } = supabaseClient.storage
+                        .from(configuracion.bucket).getPublicUrl(nombreArchivo);
+                    if (publicData?.publicUrl) urlPdf = publicData.publicUrl;
                 }
             }
-            
-        } catch (urlError) {
-            console.warn("⚠️ Fallback a URL pública");
-            const { data: publicData } = supabaseClient
-                .storage
-                .from(configuracion.bucket)
-                .getPublicUrl(nombreArchivo);
-            
+        } catch {
+            const { data: publicData } = supabaseClient.storage
+                .from(configuracion.bucket).getPublicUrl(nombreArchivo);
             if (publicData?.publicUrl) {
                 urlPdf = publicData.publicUrl;
-                console.log("✅ Usando URL pública");
             } else {
                 throw new Error("No se pudo obtener la URL del documento");
             }
         }
-        
-        // Cancelar carga anterior si existe
-        if (tareaActual) {
-            try {
-                if (documentoPDF) {
-                    documentoPDF.destroy();
-                    documentoPDF = null;
-                }
-                tareaActual.destroy();
-            } catch (error) {
-                console.warn("⚠️ Error cancelando tarea anterior:", error);
-            }
+
+        // ✅ Verificar que esta carga sigue siendo válida
+        if (miIdCarga !== idCargaActual) {
+            console.log("🛑 Carga obsoleta descartada antes de iniciar PDF.js");
+            cargando = false;
+            return;
         }
-        
-        // Configurar y cargar el PDF - OPTIMIZADO PARA MEMORIA
+
         tareaActual = pdfjsLib.getDocument({
             url: urlPdf,
             verbosity: 0,
-            disableStream: true,      // ✅ Evita streaming parcial
-            disableAutoFetch: false,  // ✅ Permite fetch completo
-            disableRange: true,       // ✅ Descarga completa (evita problemas en Brave)
+            disableStream: true,
+            disableAutoFetch: false,
+            disableRange: true,
             stopAtErrors: false,
             cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/cmaps/",
             cMapPacked: true,
             standardFontDataUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/standard_fonts/"
         });
-        
+
         const pdf = await tareaActual.promise;
+
+        // ✅ Verificar nuevamente tras el await (puede haber cambiado el ID)
+        if (miIdCarga !== idCargaActual) {
+            console.log("🛑 Carga obsoleta descartada después de cargar PDF");
+            try { pdf.destroy(); } catch (e) {}
+            cargando = false;
+            return;
+        }
+
         documentoPDF = pdf;
-        
-        // ✅ ELIMINADA VERIFICACIÓN DE TOKEN
-        
         totalPaginas = pdf.numPages;
         console.log(`📄 Documento cargado: ${totalPaginas} páginas`);
-        
+
         const esMovil = esDispositivoMovil();
-        
-        // Configurar layout (grid 2 columnas en escritorio, 1 columna en móvil)
+
         if (esMovil) {
             contenedor.style.display = "flex";
             contenedor.style.flexDirection = "column";
@@ -496,81 +481,82 @@ async function cargarPDF() {
             contenedor.style.maxWidth = "1600px";
             contenedor.style.margin = "0 auto";
         }
-        
-        // ✅ RENDERIZADO SECUENCIAL CORREGIDO (SIN TOKEN)
+
+        // ✅ Loop de renderizado con validación de ID en cada iteración
         for (let pagina = 1; pagina <= totalPaginas; pagina++) {
-            
-            // Verificar si se canceló el renderizado
-            if (renderCancelado) {
-                console.log(`🛑 Renderizado cancelado en página ${pagina}`);
+
+            // Verificar que esta carga sigue siendo la activa
+            if (miIdCarga !== idCargaActual) {
+                console.log(`🛑 Render cancelado en página ${pagina} (nueva carga iniciada)`);
                 break;
             }
-            
-            // Actualizar progreso
+
             if (textoProgreso) {
-                textoProgreso.textContent = `Renderizando página ${pagina} de ${totalPaginas} | ${esMovil ? "1 columna" : "2 columnas"}`;
+                textoProgreso.textContent = `Renderizando página ${pagina} de ${totalPaginas}`;
             }
-            
-            // Crear wrapper para la página
+
             const wrapperPagina = document.createElement("div");
             wrapperPagina.className = "page-wrapper";
             wrapperPagina.style.width = "100%";
             wrapperPagina.style.display = "flex";
             wrapperPagina.style.justifyContent = "center";
             wrapperPagina.style.alignItems = "flex-start";
-            
+
             if (!esMovil) {
                 wrapperPagina.style.maxWidth = "750px";
                 wrapperPagina.style.margin = "0 auto";
             }
-            
+
             contenedor.appendChild(wrapperPagina);
-            
-            // Renderizar página actual (SIN TOKEN)
+
             await renderizarPagina(pdf, pagina, wrapperPagina, esMovil);
-            
-            // 🔥 Liberar UI cada 2 páginas
-            if (pagina % 2 === 0) {
+
+            // ✅ Verificar después del await de renderizado también
+            if (miIdCarga !== idCargaActual) {
+                console.log(`🛑 Render cancelado tras página ${pagina}`);
+                break;
+            }
+
+            // Ceder el hilo cada 4 páginas (menos interrupciones que cada 2)
+            if (pagina % 4 === 0) {
                 await new Promise(resolve => setTimeout(resolve, 0));
             }
-            
-            console.log(`✅ Página ${pagina}/${totalPaginas} renderizada`);
+
+            console.log(`✅ Página ${pagina}/${totalPaginas}`);
         }
-        
-        console.log(`✅ DOCUMENTO COMPLETO: ${totalPaginas} páginas renderizadas`);
-        
-        // ✅ ELIMINADO: documentoPDF.destroy() (NO destruir el documento)
-        
-        tareaActual = null;
-        cargando = false;
-        loader.style.display = "none";
-        
-        // Registrar en logs
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user) {
-            await supabaseClient.from("logs").insert({
-                user_email: user.email,
-                pet: configuracion.pets[indiceMascota].nombre,
-                area: `${areaSeleccionada} | ${totalPaginas} PÁGINAS`,
-                fecha: new Date().toISOString()
-            });
+
+        // Solo finalizar si esta carga sigue siendo la activa
+        if (miIdCarga === idCargaActual) {
+            console.log(`✅ DOCUMENTO COMPLETO: ${totalPaginas} páginas`);
+            loader.style.display = "none";
+            tareaActual = null;
+            cargando = false;
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) {
+                await supabaseClient.from("logs").insert({
+                    user_email: user.email,
+                    pet: configuracion.pets[indiceMascota].nombre,
+                    area: `${areaSeleccionada} | ${totalPaginas} PÁGINAS`,
+                    fecha: new Date().toISOString()
+                });
+            }
         }
-        
+
     } catch (error) {
         console.error("❌ Error cargando PDF:", error);
-        
-        // Limpieza en caso de error
+
         if (documentoPDF) {
             try { documentoPDF.destroy(); } catch (e) {}
             documentoPDF = null;
         }
-        
+
         tareaActual = null;
         cargando = false;
-        
+
         const loader = document.getElementById("loader");
         if (loader) loader.style.display = "none";
-        
+
         showAlert(`❌ Error al cargar documento: ${error.message}`, "error");
     }
 }
