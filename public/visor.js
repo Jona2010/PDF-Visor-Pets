@@ -1,7 +1,7 @@
 /**
  * ====================================================================
  * visor.js - Visor PROFESIONAL de PETS
- * Versión: 3.0.0 (Estable - Renderizado Completo)
+ * Versión: 3.2.0 (CORREGIDO - SIN TOKEN - SIN DESTROY ANTICIPADO)
  * ====================================================================
  * 
  * FUNCIONES PRINCIPALES:
@@ -28,14 +28,13 @@ const supabaseClient = supabase.createClient(
 // ===============================
 // 📦 VARIABLES GLOBALES
 // ===============================
-let configuracion = null;           // Configuración del sistema (pets.json)
-let escalaActual = 1.0;             // Escala de zoom actual (0.6 - 3.0)
-let tokenRenderizado = 0;            // Token para cancelar renders antiguos
+let configuracion = null;           // Configuración del sistema (config.json)
+let escalaActual = 1.0;             // Escala de zoom actual (0.5 - 1.8)
 let tareaActual = null;              // Tarea de carga de PDF actual
 let documentoPDF = null;             // Referencia al documento PDF cargado
 let cargando = false;                // Bandera para evitar múltiples cargas
 let totalPaginas = 0;                // Total de páginas del PDF actual
-let paginaActual = 0;                // Página que se está renderizando
+let renderCancelado = false;         // Bandera para cancelar renderizado
 
 // Variables para zoom táctil
 let distanciaInicial = null;
@@ -50,8 +49,15 @@ let verificandoSesion = false;
 // ===============================
 // 🚪 EXPORTAR FUNCIONES GLOBALES
 // ===============================
-window.cerrarSesion = logout;
-window.mostrarAlerta = showAlert;
+window.logout = logout;
+window.showAlert = showAlert;
+
+// ===============================
+// 🔐 DETECTAR NAVEGADOR
+// ===============================
+function esBrave() {
+    return navigator.brave !== undefined;
+}
 
 // ===============================
 // 🔐 AUTENTICACIÓN DE USUARIO
@@ -69,12 +75,13 @@ window.mostrarAlerta = showAlert;
 
         if (!email.endsWith("@intelliall.com")) {
             await supabaseClient.auth.signOut();
-            mostrarAlerta("⛔ Solo se permiten correos corporativos", "warning");
+            showAlert("⛔ Solo se permiten correos corporativos", "warning");
             window.location.href = "index.html";
             return;
         }
         
         console.log("✅ Usuario autenticado:", email);
+        console.log("🦁 Brave detectado:", esBrave());
         
     } catch (error) {
         console.error("❌ Error en autenticación:", error);
@@ -100,7 +107,7 @@ async function cargarConfiguracion() {
         
     } catch (error) {
         console.error("❌ Error cargando configuración:", error);
-        mostrarAlerta("❌ Error cargando configuración del sistema", "error");
+        showAlert("❌ Error cargando configuración del sistema", "error");
     }
 }
 
@@ -168,9 +175,12 @@ function actualizarAreas() {
         };
 
         if (!cargando) {
-            requestAnimationFrame(() => {
-                cargarPDF();
-            });
+            // ✅ REEMPLAZADO: requestAnimationFrame por setTimeout
+            setTimeout(() => {
+                if (!cargando) {
+                    cargarPDF();
+                }
+            }, 100);
         }
         
     } catch (error) {
@@ -188,8 +198,7 @@ function esDispositivoMovil() {
 // ===============================
 // 🔔 MOSTRAR ALERTA EN PANTALLA
 // ===============================
-function mostrarAlerta(mensaje, tipo = "error") {
-    // Eliminar alertas anteriores
+function showAlert(mensaje, tipo = "error") {
     document.querySelectorAll(".custom-alert").forEach(alerta => alerta.remove());
 
     const alerta = document.createElement("div");
@@ -261,12 +270,9 @@ async function registrarSesionExpirada(usuario) {
 }
 
 // ===============================
-// 🎨 RENDERIZAR PÁGINA INDIVIDUAL
+// 🎨 RENDERIZAR PÁGINA INDIVIDUAL (SIN TOKEN)
 // ===============================
-async function renderizarPagina(documentoPDF, numeroPagina, contenedor, token, esMovil) {
-    // Verificar si el token sigue siendo válido
-    if (token !== tokenRenderizado) return null;
-
+async function renderizarPagina(documentoPDF, numeroPagina, contenedor, esMovil) {
     try {
         const pagina = await documentoPDF.getPage(numeroPagina);
         
@@ -292,13 +298,11 @@ async function renderizarPagina(documentoPDF, numeroPagina, contenedor, token, e
             escala = Math.min(Math.max(escala, 0.5), 1.3);
         }
         
-        // Aplicar zoom adicional si se ha modificado
+        // Aplicar zoom adicional con límite MÁXIMO 1.8 (CORREGIDO)
         escala = escala * escalaActual;
-        escala = Math.min(Math.max(escala, 0.4), 2.5);
+        escala = Math.min(Math.max(escala, 0.4), 1.8);  // ✅ LÍMITE SEGURO PARA BRAVE
         
-        const DPR = esMovil ? Math.min(window.devicePixelRatio || 1, 2) : 1;
-
-        const viewport = pagina.getViewport({ scale: escala * DPR });
+        const viewport = pagina.getViewport({ scale: escala });
         
         // Crear canvas para renderizar
         const canvas = document.createElement("canvas");
@@ -307,8 +311,9 @@ async function renderizarPagina(documentoPDF, numeroPagina, contenedor, token, e
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         
-        canvas.style.width = "100%";
-        canvas.style.height = "auto";
+        // ✅ CORREGIDO: usar dimensiones exactas, no porcentaje
+        canvas.style.width = viewport.width + "px";
+        canvas.style.height = viewport.height + "px";
         canvas.style.maxWidth = "100%";
         canvas.style.backgroundColor = "white";
         canvas.style.borderRadius = "8px";
@@ -352,7 +357,7 @@ async function renderizarPagina(documentoPDF, numeroPagina, contenedor, token, e
 }
 
 // ===============================
-// 📥 CARGAR Y RENDERIZAR PDF COMPLETO
+// 📥 CARGAR Y RENDERIZAR PDF COMPLETO (SIN TOKEN)
 // ===============================
 async function cargarPDF() {
     // Evitar múltiples cargas simultáneas
@@ -379,6 +384,7 @@ async function cargarPDF() {
         
         // Marcar inicio de carga
         cargando = true;
+        renderCancelado = false;
         
         // Limpiar contenedor y mostrar loader
         contenedor.innerHTML = "";
@@ -391,13 +397,52 @@ async function cargarPDF() {
         }
         
         // Obtener URL firmada del PDF
-        const { data: urlData, error: urlError } = await supabaseClient
-            .storage
-            .from(configuracion.bucket)
-            .createSignedUrl(nombreArchivo, 3600);
+        let urlPdf;
         
-        if (urlError) {
-            throw new Error("No se pudo obtener la URL del documento");
+        try {
+            const { data: urlData, error: urlError } = await supabaseClient
+                .storage
+                .from(configuracion.bucket)
+                .createSignedUrl(nombreArchivo, 3600);
+            
+            if (urlError) throw urlError;
+            urlPdf = urlData.signedUrl;
+            console.log("✅ URL firmada obtenida");
+            
+            // 🔥 Fallback para Brave
+            if (esBrave()) {
+                console.log("🦁 Brave detectado - Verificando URL...");
+                try {
+                    const testResponse = await fetch(urlPdf, { method: 'HEAD', mode: 'cors' });
+                    if (!testResponse.ok) {
+                        throw new Error(`HTTP ${testResponse.status}`);
+                    }
+                } catch (braveError) {
+                    console.warn("⚠️ Brave: Usando URL pública alternativa");
+                    const { data: publicData } = supabaseClient
+                        .storage
+                        .from(configuracion.bucket)
+                        .getPublicUrl(nombreArchivo);
+                    
+                    if (publicData?.publicUrl) {
+                        urlPdf = publicData.publicUrl;
+                    }
+                }
+            }
+            
+        } catch (urlError) {
+            console.warn("⚠️ Fallback a URL pública");
+            const { data: publicData } = supabaseClient
+                .storage
+                .from(configuracion.bucket)
+                .getPublicUrl(nombreArchivo);
+            
+            if (publicData?.publicUrl) {
+                urlPdf = publicData.publicUrl;
+                console.log("✅ Usando URL pública");
+            } else {
+                throw new Error("No se pudo obtener la URL del documento");
+            }
         }
         
         // Cancelar carga anterior si existe
@@ -405,6 +450,7 @@ async function cargarPDF() {
             try {
                 if (documentoPDF) {
                     documentoPDF.destroy();
+                    documentoPDF = null;
                 }
                 tareaActual.destroy();
             } catch (error) {
@@ -412,35 +458,23 @@ async function cargarPDF() {
             }
         }
         
-        // Generar nuevo token para esta carga
-        const token = ++tokenRenderizado;
-        
-        // Configurar y cargar el PDF
-        const tareaActual = pdfjsLib.getDocument({
-
-            url: urlData.signedUrl,
-
+        // Configurar y cargar el PDF - OPTIMIZADO PARA MEMORIA
+        tareaActual = pdfjsLib.getDocument({
+            url: urlPdf,
             verbosity: 0,
-
-            disableStream: true,
-
-            disableAutoFetch: true,
-
-            disableRange: true,
-
-            stopAtErrors: false
+            disableStream: true,      // ✅ Evita streaming parcial
+            disableAutoFetch: false,  // ✅ Permite fetch completo
+            disableRange: true,       // ✅ Descarga completa (evita problemas en Brave)
+            stopAtErrors: false,
+            cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/cmaps/",
+            cMapPacked: true,
+            standardFontDataUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/standard_fonts/"
         });
         
         const pdf = await tareaActual.promise;
         documentoPDF = pdf;
         
-        // Verificar si el token sigue siendo válido
-        if (token !== tokenRenderizado) {
-            if (documentoPDF) documentoPDF.destroy();
-            cargando = false;
-            loader.style.display = "none";
-            return;
-        }
+        // ✅ ELIMINADA VERIFICACIÓN DE TOKEN
         
         totalPaginas = pdf.numPages;
         console.log(`📄 Documento cargado: ${totalPaginas} páginas`);
@@ -463,10 +497,11 @@ async function cargarPDF() {
             contenedor.style.margin = "0 auto";
         }
         
-        // RENDERIZADO SECUENCIAL DE CADA PÁGINA
+        // ✅ RENDERIZADO SECUENCIAL CORREGIDO (SIN TOKEN)
         for (let pagina = 1; pagina <= totalPaginas; pagina++) {
-            // Verificar token
-            if (token !== tokenRenderizado) {
+            
+            // Verificar si se canceló el renderizado
+            if (renderCancelado) {
                 console.log(`🛑 Renderizado cancelado en página ${pagina}`);
                 break;
             }
@@ -491,12 +526,12 @@ async function cargarPDF() {
             
             contenedor.appendChild(wrapperPagina);
             
-            // Renderizar página actual
-            await renderizarPagina(pdf, pagina, wrapperPagina, token, esMovil);
+            // Renderizar página actual (SIN TOKEN)
+            await renderizarPagina(pdf, pagina, wrapperPagina, esMovil);
             
-            // Pequeña pausa para permitir refrescos de UI
-            if (pagina % 3 === 0 || pagina === totalPaginas) {
-                await new Promise(resolve => setTimeout(resolve, 10));
+            // 🔥 Liberar UI cada 2 páginas
+            if (pagina % 2 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 0));
             }
             
             console.log(`✅ Página ${pagina}/${totalPaginas} renderizada`);
@@ -504,13 +539,15 @@ async function cargarPDF() {
         
         console.log(`✅ DOCUMENTO COMPLETO: ${totalPaginas} páginas renderizadas`);
         
+        // ✅ ELIMINADO: documentoPDF.destroy() (NO destruir el documento)
+        
         tareaActual = null;
         cargando = false;
         loader.style.display = "none";
         
         // Registrar en logs
         const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user && token === tokenRenderizado) {
+        if (user) {
             await supabaseClient.from("logs").insert({
                 user_email: user.email,
                 pet: configuracion.pets[indiceMascota].nombre,
@@ -534,7 +571,7 @@ async function cargarPDF() {
         const loader = document.getElementById("loader");
         if (loader) loader.style.display = "none";
         
-        mostrarAlerta(`❌ Error al cargar documento: ${error.message}`, "error");
+        showAlert(`❌ Error al cargar documento: ${error.message}`, "error");
     }
 }
 
@@ -554,8 +591,8 @@ async function manejarZoomRueda(evento) {
         escalaActual -= 0.1;
     }
     
-    // Limitar escala
-    escalaActual = Math.min(Math.max(0.5, escalaActual), 2.5);
+    // ✅ Limitar escala a 1.8 máximo (seguro para Brave)
+    escalaActual = Math.min(Math.max(0.5, escalaActual), 1.8);
     
     timeoutZoom = setTimeout(async () => {
         if (documentoPDF || totalPaginas > 0) {
@@ -587,7 +624,9 @@ async function manejarZoomPinch(evento) {
     if (Math.abs(diferencia) < 10) return;
     
     escalaActual += diferencia * 0.001;
-    escalaActual = Math.min(Math.max(0.5, escalaActual), 2.5);
+    
+    // ✅ Limitar escala a 1.8 máximo
+    escalaActual = Math.min(Math.max(0.5, escalaActual), 1.8);
     
     distanciaInicial = distancia;
     
@@ -613,6 +652,10 @@ function inicializarZoom() {
     contenedorPDF.addEventListener("touchmove", manejarZoomPinch, { passive: false });
 }
 
+document.addEventListener("touchend", () => {
+    distanciaInicial = null;
+});
+
 // ===============================
 // ⏱️ CONTROL DE INACTIVIDAD
 // ===============================
@@ -629,7 +672,6 @@ function actualizarActividad() {
 document.addEventListener("click", actualizarActividad, { passive: true });
 document.addEventListener("touchstart", actualizarActividad, { passive: true });
 document.addEventListener("keydown", actualizarActividad, { passive: true });
-document.addEventListener("scroll", actualizarActividad, { passive: true });
 
 // Verificar inactividad periódicamente
 setInterval(async () => {
@@ -647,7 +689,7 @@ setInterval(async () => {
             await registrarSesionExpirada(user);
             await supabaseClient.auth.signOut();
             
-            mostrarAlerta("⏳ Sesión expirada por inactividad", "warning");
+            showAlert("⏳ Sesión expirada por inactividad", "warning");
             
             setTimeout(() => {
                 window.location.href = "index.html";
@@ -670,10 +712,7 @@ document.addEventListener("contextmenu", evento => evento.preventDefault());
 
 // Bloquear teclas de desarrollador
 document.addEventListener("keydown", evento => {
-    const teclasBloqueadas = [
-        "F12",
-        "F5"
-    ];
+    const teclasBloqueadas = ["F12", "F5"];
     
     const combinacionesBloqueadas = [
         (evento.ctrlKey && evento.shiftKey && (evento.key === "I" || evento.key === "i")),
@@ -704,7 +743,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const { data: { session } } = await supabaseClient.auth.getSession();
         
         if (!session) {
-            mostrarAlerta("⏳ Sesión expirada", "error");
+            showAlert("⏳ Sesión expirada", "error");
             setTimeout(() => {
                 window.location.href = "index.html";
             }, 1500);
@@ -717,7 +756,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (Date.now() > expiraEn) {
             await registrarSesionExpirada(usuario);
             await supabaseClient.auth.signOut();
-            mostrarAlerta("⏳ Sesión expirada", "error");
+            showAlert("⏳ Sesión expirada", "error");
             setTimeout(() => {
                 window.location.href = "index.html";
             }, 1500);
@@ -728,15 +767,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         await cargarConfiguracion();
         inicializarZoom();
         
-        // NOTA: El resize NO recarga el PDF automáticamente
-        // para evitar problemas de renderizado. Si el usuario
-        // cambia el tamaño, puede hacer zoom o cambiar de documento.
-        
-        console.log("🚀 Visor PETS 3.0 inicializado correctamente");
+        console.log("🚀 Visor PETS 3.2 CORREGIDO - SIN TOKEN - SIN DESTROY");
         console.log("📐 Grid: 2 columnas (escritorio) | 1 columna (móvil)");
+        console.log("🔒 Escala máxima: 1.8 (seguro para Brave)");
         
     } catch (error) {
         console.error("❌ Error inicializando visor:", error);
-        mostrarAlerta("❌ Error iniciando el visor", "error");
+        showAlert("❌ Error iniciando el visor", "error");
     }
 });
