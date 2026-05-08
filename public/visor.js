@@ -11,13 +11,10 @@ let config = null;
 let pdfScale = 1;
 
 // 🔒 EVITAR MÚLTIPLES CARGAS PDF
-// 🚀 CONTROL RENDER PDF
 let renderToken = 0;
-
 let currentLoadingTask = null;
-
-let pdfDocument = null; // ✅ AGREGAR ESTA LÍNEA
-let cargandoPDF = false; // ✅ AGREGAR ESTA LÍNEA
+let pdfDocument = null;
+let cargandoPDF = false;
 
 // ===============================
 // 🔐 VALIDAR SESIÓN GOOGLE
@@ -346,7 +343,7 @@ async function registrarSesionExpirada(user){
     }
 }
 
-// 📥 CARGAR PDF (FIX TOTAL - 52 PÁGINAS)
+// 📥 CARGAR PDF COMPLETO (TODAS LAS PÁGINAS)
 async function loadPDF() {
     try {
         const container = document.getElementById("pdfContainer");
@@ -364,14 +361,14 @@ async function loadPDF() {
 
         // 🔥 UI LIMPIA
         container.classList.remove("loaded");
-        container.innerHTML = ""; // ✅ LIMPIA DOM COMPLETO
+        container.innerHTML = "";
         loader.style.display = "flex";
 
         // 🔐 SUPABASE URL
         const { data, error } = await supabaseClient
             .storage
             .from(config.bucket)
-            .createSignedUrl(fileName, 3600); // 🔄 1 HORA
+            .createSignedUrl(fileName, 3600);
 
         if (error) {
             showAlert("❌ Error cargando PDF", "error");
@@ -391,70 +388,58 @@ async function loadPDF() {
         const token = ++renderToken;
         currentLoadingTask = null;
 
-        // 🔥 CONFIGURACIÓN CRÍTICA PDFs GRANDES
+        // 🔥 CONFIGURACIÓN PARA CARGAR TODAS LAS PÁGINAS
         currentLoadingTask = pdfjsLib.getDocument({
             url: data.signedUrl,
-            verbosity: 0,              // ✅ SILENCIO
-            disableAutoFetch: true,    // ✅ MANUAL
-            rangeChunkSize: 1048576,   // ✅ 1MB
-            maxImageSize: 4096,
-            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', // ✅ CDN
+            verbosity: 0,
+            disableAutoFetch: false,     // ✅ CAMBIADO: CARGAR TODAS LAS PÁGINAS
+            rangeChunkSize: 65536,       // ✅ TAMAÑO ÓPTIMO
+            maxImageSize: -1,            // ✅ SIN LÍMITE
+            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
             cMapPacked: true
         });
 
         const pdf = await currentLoadingTask.promise;
-
-        pdfDocument = pdf; // ✅ GUARDAR REFERENCIA
-        console.log(`✅ PDF: ${pdf.numPages} páginas`); // ✅ DEBUG
+        pdfDocument = pdf;
+        
+        console.log(`✅ PDF CARGADO: ${pdf.numPages} páginas`);
 
         // 🚫 TOKEN VÁLIDO
         if (token !== renderToken) {
-            pdf.destroy(); // ✅ SIEMPRE DESTROY
+            pdf.destroy();
             return;
         }
 
         const totalPages = pdf.numPages;
-        console.log(`📄 Renderizando ${totalPages} páginas...`);
+        console.log(`📄 Renderizando TODAS LAS ${totalPages} páginas...`);
 
         const modoMovil = esMovil();
-        const renderedPages = []; // ✅ TRACK PÁGINAS
-
-        // 🔥 BATCH RENDERIZADO (5 PÁGINAS POR VEZ)
-        for (let batchStart = 1; batchStart <= totalPages; batchStart += 5) {
+        
+        // 🔥 RENDERIZAR TODAS LAS PÁGINAS (SIN LOTES)
+        for (let i = 1; i <= totalPages; i++) {
             if (token !== renderToken) {
                 break;
             }
-
-            const batchEnd = Math.min(batchStart + 4, totalPages);
-            const batchPromises = [];
-
-            // 🚀 PROCESAR BATCH
-            for (let i = batchStart; i <= batchEnd; i++) {
-                batchPromises.push(
-                    renderSinglePage(pdf, i, container, modoMovil, token)
-                );
-            }
-
-            // ⏳ ESPERAR BATCH
-            await Promise.all(batchPromises);
             
-            // 🧹 LIMPIA MEMORIA CADA 5 PÁGINAS
-            if (batchStart % 15 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                console.log(`✅ Batch ${batchStart}/${totalPages} completado`);
+            await renderSinglePage(pdf, i, container, modoMovil, token);
+            
+            // 💡 PEQUEÑA PAUSA PARA NO BLOQUEAR EL UI
+            if (i % 10 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 10));
+                console.log(`📄 Progreso: ${i}/${totalPages} páginas renderizadas`);
             }
         }
 
-        // 🧹 DESTROY DEFINITIVO
+        // 🧹 LIMPIEZA
         if (pdfDocument) {
             pdfDocument.destroy();
             pdfDocument = null;
         }
-        currentLoadingTask = null;
-
-        // ✅ DESTROY PDF - CRÍTICO
-        pdf.destroy();
-        currentLoadingTask = null;
+        
+        if (currentLoadingTask) {
+            currentLoadingTask.destroy();
+            currentLoadingTask = null;
+        }
 
         // 👤 LOG
         const { data: { user } } = await supabaseClient.auth.getUser();
@@ -469,6 +454,8 @@ async function loadPDF() {
         // 🔥 UI FINAL
         container.classList.add("loaded");
         loader.style.display = "none";
+        
+        console.log(`✅ RENDER COMPLETO: ${totalPages} páginas mostradas`);
 
     } catch (err) {
         console.error("❌ Error loadPDF:", err);
@@ -483,14 +470,14 @@ async function loadPDF() {
     }
 }
 
-// 🎯 FUNCIÓN RENDER PÁGINA INDIVIDUAL (OPTIMIZADA)
+// 🎯 FUNCIÓN RENDER PÁGINA INDIVIDUAL
 async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
     if (token !== renderToken) return null;
 
     try {
         const page = await pdf.getPage(pageNum);
         
-        // 📏 CÁLCULO ESCALA OPTIMIZADO
+        // 📏 CÁLCULO ESCALA
         const containerWidth = container.clientWidth;
         const baseViewport = page.getViewport({ scale: 1 });
         
@@ -499,13 +486,13 @@ async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
             : (containerWidth * 0.95 / baseViewport.width) * pdfScale;
 
         const devicePixelRatio = modoMovil ? (window.devicePixelRatio || 2) : 1.5;
-        let finalScale = Math.min(scale * devicePixelRatio, 2.5); // ✅ LÍMITE
+        let finalScale = Math.min(scale * devicePixelRatio, 2.5);
 
         const viewport = page.getViewport({ scale: finalScale });
         
-        // 🖼️ CANVAS OPTIMIZADO
+        // 🖼️ CANVAS
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d"); // ✅ SIN ALPHA POR DEFAULT
+        const ctx = canvas.getContext("2d");
         
         canvas.width = Math.floor(viewport.width);
         canvas.height = Math.floor(viewport.height);
@@ -529,7 +516,7 @@ async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
 
         await renderTask.promise;
         
-        // 🧹 LIMPIA PÁGINA INMEDIATO
+        // 🧹 LIMPIA PÁGINA
         page.cleanup();
         
         // ✨ ANIMACIÓN
@@ -649,9 +636,6 @@ document.addEventListener(
     { passive:true }
 );
 
-// 🚫 NO USAR SCROLL GLOBAL
-// document.addEventListener("scroll", actualizarActividad);
-
 // ===============================
 // 🚨 REGISTRAR SESIÓN EXPIRADA
 // ===============================
@@ -692,12 +676,10 @@ async function registrarSesionExpirada(user){
     }
 }
 
-
 // ===============================
 // 📱 FIX MOBILE PINCH
 // ===============================
 
-// 🚫 SOLO SAFARI/iOS
 if("ongesturestart" in window){
 
     document.addEventListener(
@@ -719,7 +701,6 @@ let verificandoSesion = false;
 
 setInterval(async () => {
 
-    // 🚫 EVITAR MÚLTIPLES CHECKS
     if(verificandoSesion){
         return;
     }
@@ -730,7 +711,6 @@ setInterval(async () => {
 
         const ahora = Date.now();
 
-        // ⏳ EXPIRADA
         if(
             ahora - lastActivity >
             TIEMPO_MAX
@@ -746,23 +726,19 @@ setInterval(async () => {
                 .auth
                 .getUser();
 
-            // 🚨 REGISTRAR
             await registrarSesionExpirada(
                 user
             );
 
-            // 🔓 LOGOUT
             await supabaseClient
                 .auth
                 .signOut();
 
-            // 🔔 ALERTA
             showAlert(
                 "⏳ Sesión expirada por inactividad",
                 "error"
             );
 
-            // 🚀 REDIRECT ÚNICO
             setTimeout(() => {
 
                 window.location.href =
@@ -819,20 +795,17 @@ document.addEventListener(
 
         try{
 
-            // 🔐 DEVICE
             const device_id =
                 localStorage.getItem(
                     "device_id"
                 );
 
-            // 🔑 SESSION
             const {
                 data:{ session }
             } = await supabaseClient
                 .auth
                 .getSession();
 
-            // 🚫 SIN SESIÓN
             if(!session){
 
                 showAlert(
@@ -853,7 +826,6 @@ document.addEventListener(
             const user =
                 session.user;
 
-            // ⏳ EXPIRADA
             const expiresAt =
                 session.expires_at * 1000;
 
@@ -882,7 +854,6 @@ document.addEventListener(
                 return;
             }
 
-            // ⚠️ DEVICE
             if(!device_id){
 
                 console.warn(
@@ -890,10 +861,7 @@ document.addEventListener(
                 );
             }
 
-            // 🚀 LOAD CONFIG
             await loadConfig();
-
-            // 🚀 INIT PDF EVENTS
             initPDFZoom();
 
         }catch(err){
@@ -911,42 +879,11 @@ document.addEventListener(
     }
 );
 
-function initPDFZoom(){
-
-    const pdfContainer =
-        document.getElementById(
-            "pdfContainer"
-        );
-
-    if(!pdfContainer){
-        return;
-    }
-
-    // ===============================
-    // 🖥️ ZOOM RUEDA
-    // ===============================
-    pdfContainer.addEventListener(
-        "wheel",
-        handleWheelZoom,
-        { passive:false }
-    );
-
-    // ===============================
-    // 📱 PINCH
-    // ===============================
-    pdfContainer.addEventListener(
-        "touchmove",
-        handlePinchZoom,
-        { passive:false }
-    );
-}
-
 // ===============================
 // 🔍 ZOOM PDF
 // ===============================
 
 let initialDistance = null;
-
 let zoomTimeout = null;
 
 // ===============================
@@ -963,18 +900,12 @@ function initPDFZoom(){
         return;
     }
 
-    // ===============================
-    // 🖥️ ZOOM RUEDA
-    // ===============================
     pdfContainer.addEventListener(
         "wheel",
         handleWheelZoom,
         { passive:false }
     );
 
-    // ===============================
-    // 📱 PINCH
-    // ===============================
     pdfContainer.addEventListener(
         "touchmove",
         handlePinchZoom,
@@ -987,19 +918,16 @@ function initPDFZoom(){
 // ===============================
 async function handleWheelZoom(e){
 
-    // 🚫 SOLO CTRL + WHEEL
     if(!e.ctrlKey){
         return;
     }
 
     e.preventDefault();
 
-    // 🚫 EVITAR SPAM
     if(zoomTimeout){
         return;
     }
 
-    // 🔍 ZOOM
     if(e.deltaY < 0){
 
         pdfScale += 0.1;
@@ -1009,14 +937,12 @@ async function handleWheelZoom(e){
         pdfScale -= 0.1;
     }
 
-    // 🔒 LIMITES
     pdfScale =
         Math.min(
             Math.max(0.6, pdfScale),
             3
         );
 
-    // 🚀 THROTTLE
     zoomTimeout =
         setTimeout(async () => {
 
@@ -1049,7 +975,6 @@ async function handlePinchZoom(e){
     const distance =
         Math.sqrt(dx * dx + dy * dy);
 
-    // 🚀 INIT
     if(!initialDistance){
 
         initialDistance = distance;
@@ -1060,15 +985,12 @@ async function handlePinchZoom(e){
     const diff =
         distance - initialDistance;
 
-    // 🚫 FILTRAR MICRO MOVIMIENTOS
     if(Math.abs(diff) < 8){
         return;
     }
 
-    // 🔍 ZOOM
     pdfScale += diff * 0.0008;
 
-    // 🔒 LIMITES
     pdfScale =
         Math.min(
             Math.max(0.6, pdfScale),
@@ -1077,7 +999,6 @@ async function handlePinchZoom(e){
 
     initialDistance = distance;
 
-    // 🚫 EVITAR SPAM
     if(zoomTimeout){
         return;
     }
