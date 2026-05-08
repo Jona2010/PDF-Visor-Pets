@@ -342,7 +342,7 @@ async function registrarSesionExpirada(user){
     }
 }
 
-// 📥 CARGAR PDF (VERSIÓN SIMPLIFICADA PARA 2 COLUMNAS)
+// 📥 CARGAR PDF - VERSIÓN OPTIMIZADA CON 2 COLUMNAS
 async function loadPDF() {
     try {
         const container = document.getElementById("pdfContainer");
@@ -361,6 +361,7 @@ async function loadPDF() {
         // 🔥 UI LIMPIA
         container.innerHTML = "";
         loader.style.display = "flex";
+        cargandoPDF = true;
 
         // 🔐 SUPABASE URL
         const { data, error } = await supabaseClient
@@ -371,6 +372,7 @@ async function loadPDF() {
         if (error) {
             showAlert("❌ Error cargando PDF", "error");
             loader.style.display = "none";
+            cargandoPDF = false;
             return;
         }
 
@@ -405,22 +407,34 @@ async function loadPDF() {
         // 🚫 TOKEN VÁLIDO
         if (token !== renderToken) {
             pdf.destroy();
+            cargandoPDF = false;
             return;
         }
 
         const totalPages = pdf.numPages;
         const modoMovil = esMovil();
         
-        console.log(`📄 Renderizando ${totalPages} páginas en ${modoMovil ? '1 columna' : '2 columnas'}`);
+        console.log(`📄 Renderizando ${totalPages} páginas en ${modoMovil ? '1 columna' : '2 columnas por fila'}`);
         
-        // NO aplicar estilos inline - dejar que el CSS maneje el grid
-        // Solo aseguramos que el contenedor tenga la clase correcta
+        // 🔥 Configurar CSS para grid de 2 columnas
         container.classList.remove('modo-movil', 'modo-escritorio');
         
         if (modoMovil) {
             container.classList.add('modo-movil');
+            // Estilos inline para móvil
+            container.style.display = 'flex';
+            container.style.flexDirection = 'column';
+            container.style.alignItems = 'center';
+            container.style.gap = '20px';
         } else {
             container.classList.add('modo-escritorio');
+            // 🔥 CLAVE: Estilos inline para grid de 2 columnas
+            container.style.display = 'grid';
+            container.style.gridTemplateColumns = 'repeat(2, 1fr)';
+            container.style.gap = '24px';
+            container.style.alignItems = 'start';
+            container.style.justifyItems = 'center';
+            container.style.padding = '20px';
         }
         
         // Array para almacenar las promesas de renderizado
@@ -434,6 +448,18 @@ async function loadPDF() {
             const pageWrapper = document.createElement("div");
             pageWrapper.className = "page-wrapper";
             
+            // Estilos específicos para el wrapper
+            if (modoMovil) {
+                pageWrapper.style.width = '100%';
+                pageWrapper.style.maxWidth = '500px';
+                pageWrapper.style.margin = '0 auto';
+            } else {
+                pageWrapper.style.width = '100%';
+                pageWrapper.style.display = 'flex';
+                pageWrapper.style.justifyContent = 'center';
+                pageWrapper.style.alignItems = 'center';
+            }
+            
             // Añadir al contenedor
             container.appendChild(pageWrapper);
             
@@ -441,9 +467,10 @@ async function loadPDF() {
             const renderPromise = renderPagina(pdf, i, pageWrapper, token, modoMovil);
             renderPromises.push(renderPromise);
             
-            // Log de progreso
+            // Log de progreso cada 10 páginas
             if (i % 10 === 0) {
                 console.log(`📄 Progreso: ${i}/${totalPages} páginas`);
+                // Pequeña pausa para no bloquear UI
                 await new Promise(resolve => setTimeout(resolve, 5));
             }
         }
@@ -473,7 +500,8 @@ async function loadPDF() {
         }
 
         loader.style.display = "none";
-        console.log(`✅ RENDER COMPLETO: ${totalPages} páginas`);
+        cargandoPDF = false;
+        console.log(`✅ RENDER COMPLETO: ${totalPages} páginas en ${modoMovil ? '1 columna' : '2 columnas'}`);
 
     } catch (err) {
         console.error("❌ Error loadPDF:", err);
@@ -484,46 +512,63 @@ async function loadPDF() {
         }
         document.getElementById("loader").style.display = "none";
         currentLoadingTask = null;
+        cargandoPDF = false;
         showAlert(`❌ Error PDF: ${err.message}`, "error");
     }
 }
 
-// 🎯 FUNCIÓN PARA RENDERIZAR CADA PÁGINA (UNIFICADA)
+// 🎯 FUNCIÓN PARA RENDERIZAR CADA PÁGINA (OPTIMIZADA PARA 2 COLUMNAS)
 async function renderPagina(pdf, pageNum, containerElement, token, modoMovil) {
     if (token !== renderToken) return null;
 
     try {
         const page = await pdf.getPage(pageNum);
         
-        // Calcular escala según dispositivo
+        // 🔥 Calcular escala optimizada para 2 columnas
         let scale;
         
         if (modoMovil) {
-            // Móvil: escala basada en ancho de pantalla
-            const containerWidth = window.innerWidth - 40;
-            const baseViewport = page.getViewport({ scale: 1 });
-            scale = (containerWidth * 0.9) / baseViewport.width;
-            scale = Math.min(Math.max(scale, 0.5), 2.5);
-        } else {
-            // Escritorio: escala basada en el contenedor (el CSS grid ya da el ancho)
-            const containerWidth = containerElement.clientWidth || 500;
+            // Móvil: una página ocupa casi todo el ancho
+            const containerWidth = Math.min(window.innerWidth - 40, 500);
             const baseViewport = page.getViewport({ scale: 1 });
             scale = (containerWidth * 0.95) / baseViewport.width;
-            scale = Math.min(Math.max(scale, 0.4), 1.8);
+            scale = Math.min(Math.max(scale, 0.5), 2);
+        } else {
+            // Escritorio: cada página ocupa la mitad del grid (aprox 45% del ancho total)
+            // Calcular basado en el contenedor padre
+            const gridContainer = document.getElementById("pdfContainer");
+            let availableWidth = 500; // Valor por defecto
+            
+            if (gridContainer) {
+                const gridWidth = gridContainer.clientWidth;
+                // Restar gaps y padding, dividir entre 2 columnas
+                availableWidth = (gridWidth - 48) / 2; // 24px gap * 2 = 48
+            }
+            
+            const baseViewport = page.getViewport({ scale: 1 });
+            // Ocupar el 95% del espacio disponible por columna
+            scale = (availableWidth * 0.95) / baseViewport.width;
+            // Limitar escala para mantener legibilidad
+            scale = Math.min(Math.max(scale, 0.6), 1.5);
         }
         
         const viewport = page.getViewport({ scale: scale });
         
         // Crear canvas
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
+        const ctx = canvas.getContext("2d", { alpha: false }); // Optimización: alpha false mejora performance
         
         canvas.width = viewport.width;
         canvas.height = viewport.height;
+        
+        // 🔥 Estilos CSS para el canvas
+        canvas.style.display = 'block';
         canvas.style.width = '100%';
         canvas.style.height = 'auto';
         canvas.style.maxWidth = `${viewport.width}px`;
+        canvas.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
         canvas.style.backgroundColor = "white";
+        canvas.style.borderRadius = '4px';
         
         // Limpiar contenedor y añadir canvas
         containerElement.innerHTML = "";
@@ -532,7 +577,8 @@ async function renderPagina(pdf, pageNum, containerElement, token, modoMovil) {
         // Renderizar
         const renderTask = page.render({
             canvasContext: ctx,
-            viewport: viewport
+            viewport: viewport,
+            background: 'white'
         });
         
         await renderTask.promise;
@@ -793,6 +839,11 @@ document.addEventListener(
                 e.ctrlKey &&
                 e.shiftKey &&
                 e.key === "I"
+            ) ||
+            
+            (
+                e.ctrlKey &&
+                e.key === "u"
             )
         ){
             e.preventDefault();
@@ -884,9 +935,10 @@ document.addEventListener(
                 clearTimeout(resizeTimeout);
                 resizeTimeout = setTimeout(function() {
                     if (pdfDocument && !cargandoPDF) {
+                        console.log("🔄 Re-renderizando por cambio de tamaño");
                         loadPDF();
                     }
-                }, 500);
+                }, 300);
             });
 
         }catch(err){

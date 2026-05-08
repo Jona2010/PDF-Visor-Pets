@@ -20,11 +20,20 @@
 <!-- Fallback CSS para evitar FOOC (Flash of Unstyled Content) -->
 <style>
     /* Loader inicial rápido */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
     body {
         margin: 0;
         padding: 0;
         background: #020617;
-        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        overflow: hidden;
+        height: 100vh;
+        height: 100dvh;
     }
     
     .app {
@@ -33,7 +42,7 @@
         flex-direction: column;
         background: #020617;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.4s ease;
     }
     
     .app.loaded {
@@ -48,16 +57,40 @@
         text-align: center;
         color: white;
         z-index: 10000;
+        background: rgba(2,6,23,0.95);
+        backdrop-filter: blur(10px);
+        padding: 32px 48px;
+        border-radius: 24px;
+        border: 1px solid rgba(34,197,94,0.2);
+        transition: opacity 0.3s ease;
     }
     
     .initial-spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid rgba(34,197,94,0.2);
+        width: 50px;
+        height: 50px;
+        margin: 0 auto 16px;
+        position: relative;
+    }
+    
+    .initial-spinner-ring {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border: 3px solid transparent;
         border-top-color: #22c55e;
+        border-right-color: #22c55e;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
-        margin: 0 auto 12px;
+    }
+    
+    .initial-spinner-ring:nth-child(2) {
+        width: 70%;
+        height: 70%;
+        top: 15%;
+        left: 15%;
+        border-top-color: #3b82f6;
+        border-right-color: #3b82f6;
+        animation: spin 0.6s linear reverse infinite;
     }
     
     @keyframes spin {
@@ -66,8 +99,84 @@
     
     .initial-loader p {
         margin: 0;
-        font-size: 13px;
+        font-size: 14px;
         color: #94a3b8;
+        font-weight: 500;
+    }
+    
+    .initial-loader small {
+        display: block;
+        margin-top: 8px;
+        font-size: 11px;
+        color: #22c55e;
+    }
+    
+    /* Loader principal mejorado */
+    .loader {
+        position: absolute;
+        inset: 0;
+        background: rgba(2,6,23,0.95);
+        backdrop-filter: blur(8px);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        z-index: 2000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .loader.active {
+        display: flex !important;
+        opacity: 1 !important;
+    }
+    
+    .loader .spinner {
+        width: 60px;
+        height: 60px;
+        position: relative;
+    }
+    
+    .loader .spinner::before,
+    .loader .spinner::after {
+        content: '';
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border: 3px solid transparent;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    .loader .spinner::before {
+        border-top-color: #22c55e;
+        border-right-color: #22c55e;
+    }
+    
+    .loader .spinner::after {
+        width: 70%;
+        height: 70%;
+        top: 15%;
+        left: 15%;
+        border-top-color: #3b82f6;
+        border-right-color: #3b82f6;
+        animation: spin 0.6s linear reverse infinite;
+    }
+    
+    .loader p {
+        margin-top: 20px;
+        color: #22c55e;
+        font-size: 14px;
+        font-weight: 500;
+    }
+    
+    .loader small {
+        color: #64748b;
+        font-size: 11px;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
 </style>
 
@@ -76,8 +185,12 @@
 
 <!-- Loader inicial -->
 <div id="initialLoader" class="initial-loader">
-    <div class="initial-spinner"></div>
-    <p>Inicializando visor seguro...</p>
+    <div class="initial-spinner">
+        <div class="initial-spinner-ring"></div>
+        <div class="initial-spinner-ring"></div>
+    </div>
+    <p>🔐 Inicializando visor seguro...</p>
+    <small>Intelliall PETS Viewer</small>
 </div>
 
 <div class="app" id="app">
@@ -86,7 +199,7 @@
     <header class="header">
 
         <div class="logo">
-            <span>INTELLIALL</span>
+            <span>📄 INTELLIALL</span>
             <small>Professional PETS Viewer</small>
         </div>
 
@@ -97,7 +210,7 @@
 
         <div class="actions">
             <button onclick="logout()" class="btn-logout" aria-label="Cerrar sesión">
-                <span>🚪</span> Salir
+                🚪 Salir
             </button>
         </div>
 
@@ -106,28 +219,35 @@
     <!-- 🔷 VISOR PRINCIPAL -->
     <main class="viewer">
 
-        <!-- Contenedor PDF -->
+        <!-- Contenedor PDF (Grid de 2 columnas) -->
         <div id="pdfContainer" class="pdf-view"></div>
 
-        <!-- Loader mejorado -->
+        <!-- Loader mejorado con animación -->
         <div id="loader" class="loader">
             <div class="spinner"></div>
-            <p>Cargando documento...</p>
-            <small style="margin-top: 8px; color: #64748b; font-size: 11px;">Por favor espere</small>
+            <p>📄 Cargando documento...</p>
+            <small>Procesando páginas | 2 columnas</small>
         </div>
 
     </main>
 
 </div>
 
-<!-- 📌 INDICADOR DE CONEXIÓN (opcional) -->
-<div id="connectionStatus" style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 4px 10px; border-radius: 20px; font-size: 10px; color: #22c55e; z-index: 9999; display: none;">
-    <span>🟢 Conectado</span>
+<!-- 📌 INDICADOR DE CONEXIÓN -->
+<div id="connectionStatus" style="position: fixed; bottom: 12px; right: 12px; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); padding: 6px 12px; border-radius: 20px; font-size: 10px; color: #22c55e; z-index: 9999; display: none; font-weight: 500; gap: 6px; align-items: center;">
+    <span style="display: inline-block; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; animation: pulse 1.5s ease infinite;"></span>
+    <span>Conectado</span>
 </div>
+
+<style>
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+</style>
 
 <!-- LIBRERÍAS con carga optimizada -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <!-- Configuración inicial de PDF.js -->
@@ -139,7 +259,6 @@
             console.log('✅ PDF.js inicializado correctamente');
         } else {
             console.error('❌ PDF.js no cargado, reintentando...');
-            // Reintentar después de 500ms
             setTimeout(function() {
                 if (typeof pdfjsLib !== 'undefined') {
                     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -165,7 +284,9 @@
                 if (initialLoader) {
                     initialLoader.style.opacity = '0';
                     setTimeout(function() {
-                        if (initialLoader) initialLoader.style.display = 'none';
+                        if (initialLoader && initialLoader.parentNode) {
+                            initialLoader.style.display = 'none';
+                        }
                     }, 300);
                 }
                 if (app) {
@@ -175,25 +296,35 @@
         });
         
         // Detectar conexión a internet
-        window.addEventListener('online', function() {
+        let statusTimeout;
+        function showConnectionStatus(connected) {
             const status = document.getElementById('connectionStatus');
-            if (status) {
-                status.style.display = 'block';
+            if (!status) return;
+            
+            if (connected) {
                 status.style.backgroundColor = 'rgba(34,197,94,0.9)';
-                status.innerHTML = '<span>🟢 Conectado</span>';
-                setTimeout(function() {
-                    status.style.display = 'none';
-                }, 3000);
+                status.style.color = 'white';
+                status.innerHTML = '<span style="background: white;"></span><span>🟢 Conectado</span>';
+                status.style.display = 'flex';
+            } else {
+                status.style.backgroundColor = 'rgba(239,68,68,0.9)';
+                status.style.color = 'white';
+                status.innerHTML = '<span style="background: #ef4444;"></span><span>🔴 Sin conexión</span>';
+                status.style.display = 'flex';
             }
+            
+            if (statusTimeout) clearTimeout(statusTimeout);
+            statusTimeout = setTimeout(function() {
+                status.style.display = 'none';
+            }, 3000);
+        }
+        
+        window.addEventListener('online', function() {
+            showConnectionStatus(true);
         });
         
         window.addEventListener('offline', function() {
-            const status = document.getElementById('connectionStatus');
-            if (status) {
-                status.style.display = 'block';
-                status.style.backgroundColor = 'rgba(239,68,68,0.9)';
-                status.innerHTML = '<span>🔴 Sin conexión</span>';
-            }
+            showConnectionStatus(false);
         });
         
         // Prevenir salida accidental con teclas
@@ -201,17 +332,41 @@
             // Prevenir Ctrl+R, Ctrl+F5, etc.
             if ((e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R' || e.key === 'f' || e.key === 'F')) {
                 e.preventDefault();
+                showAlert('⛔ Recarga no permitida en esta aplicación', 'warning');
                 return false;
             }
             // Prevenir F5
             if (e.key === 'F5') {
                 e.preventDefault();
+                showAlert('⛔ Función no disponible', 'warning');
                 return false;
             }
         });
         
-        console.log('🚀 Visor PETS inicializado correctamente');
+        console.log('🚀 Visor PETS 2 Columnas inicializado correctamente');
     })();
+    
+    // Función auxiliar para alertas (por si aún no está cargada)
+    window.showAlertFallback = function(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'custom-alert ' + (type || 'error');
+        alertDiv.textContent = message;
+        document.body.appendChild(alertDiv);
+        setTimeout(function() {
+            alertDiv.classList.add('show');
+        }, 10);
+        setTimeout(function() {
+            alertDiv.classList.remove('show');
+            setTimeout(function() {
+                if (alertDiv.parentNode) alertDiv.remove();
+            }, 250);
+        }, 3000);
+    };
+    
+    // Exponer showAlert globalmente
+    if (typeof showAlert === 'undefined') {
+        window.showAlert = window.showAlertFallback;
+    }
 </script>
 
 </body>
