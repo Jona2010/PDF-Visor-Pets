@@ -2,15 +2,12 @@
 <html lang="es">
 <head>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>INTELLIALL | Visor PETS</title>
-
-<meta name="description" content="Visor seguro de PETS con acceso controlado">
-<meta name="robots" content="noindex, nofollow">
-
-<link rel="stylesheet" href="styles_visor.css">
+<meta name="description" content="Visor seguro de PETS con acceso controlado" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="stylesheet" href="styles_visor.css" />
 
 </head>
 <body>
@@ -36,7 +33,6 @@
 
     </header>
 
-
     <!-- 🔷 VISOR -->
     <main class="viewer">
 
@@ -52,16 +48,23 @@
 
 </div>
 
-<!-- LIBRERÍAS -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<!-- LIBRERÍAS con defer para carga ordenada -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js" defer></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
+
+<script defer>
+    document.addEventListener("DOMContentLoaded", () => {
+        // Asegurarse que pdfjsLib exista
+        if (typeof pdfjsLib !== "undefined") {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        } else {
+            console.error("pdfjsLib no está disponible");
+        }
+    });
 </script>
 
-<script src="visor.js"></script>
+<script src="visor.js" defer></script>
 
 </body>
 </html>
