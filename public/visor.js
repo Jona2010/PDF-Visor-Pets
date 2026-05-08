@@ -471,26 +471,42 @@ async function loadPDF() {
 }
 
 // 🎯 FUNCIÓN RENDER PÁGINA INDIVIDUAL
+// 🎯 FUNCIÓN RENDER PÁGINA INDIVIDUAL (2 PÁGINAS POR FILA)
 async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
     if (token !== renderToken) return null;
 
     try {
         const page = await pdf.getPage(pageNum);
         
-        // 📏 CÁLCULO ESCALA
-        const containerWidth = container.clientWidth;
+        // 📏 CÁLCULO ESCALA OPTIMIZADO
+        let containerWidth;
+        
+        if (!modoMovil) {
+            // En escritorio: calcular ancho para 2 columnas
+            const gridGap = 30; // gap entre columnas en px
+            const containerRect = container.getBoundingClientRect();
+            const availableWidth = containerRect.width - gridGap;
+            containerWidth = availableWidth / 2;
+        } else {
+            // En móvil: usar ancho completo
+            containerWidth = container.clientWidth;
+        }
+        
         const baseViewport = page.getViewport({ scale: 1 });
         
         let scale = modoMovil 
-            ? ((window.innerWidth - 20) / baseViewport.width) * pdfScale
+            ? ((window.innerWidth - 40) / baseViewport.width) * pdfScale
             : (containerWidth * 0.95 / baseViewport.width) * pdfScale;
 
+        // Límites de escala
+        scale = Math.min(Math.max(scale, 0.5), 2.5);
+        
         const devicePixelRatio = modoMovil ? (window.devicePixelRatio || 2) : 1.5;
-        let finalScale = Math.min(scale * devicePixelRatio, 2.5);
+        let finalScale = scale * devicePixelRatio;
 
         const viewport = page.getViewport({ scale: finalScale });
         
-        // 🖼️ CANVAS
+        // 🖼️ CREAR CANVAS
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         
@@ -501,29 +517,54 @@ async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
         canvas.style.height = `${Math.floor(viewport.height / devicePixelRatio)}px`;
         canvas.style.opacity = "0";
         canvas.style.transition = "opacity 0.3s ease";
-
-        // 📦 WRAPPER
+        canvas.style.display = "block";
+        
+        // 📦 CREAR WRAPPER
         const pageWrapper = document.createElement("div");
         pageWrapper.className = "page-wrapper";
+        pageWrapper.setAttribute("data-page", pageNum);
         pageWrapper.appendChild(canvas);
-        container.appendChild(pageWrapper);
-
-        // 🎨 RENDER
+        
+        // 🎯 ORGANIZAR EN PAREJAS (2 por fila)
+        // Buscar si ya existe una fila con espacio para otra página
+        const existingRows = container.querySelectorAll(':scope > div');
+        let targetRow = null;
+        
+        if (!modoMovil) {
+            // En escritorio: buscar una fila que tenga menos de 2 páginas
+            for (const row of existingRows) {
+                if (row.children.length < 2) {
+                    targetRow = row;
+                    break;
+                }
+            }
+        }
+        
+        // Si no hay fila disponible (o es móvil), crear una nueva
+        if (!targetRow) {
+            targetRow = document.createElement("div");
+            container.appendChild(targetRow);
+        }
+        
+        // Añadir la página a la fila
+        targetRow.appendChild(pageWrapper);
+        
+        // 🎨 RENDERIZAR
         const renderTask = page.render({
             canvasContext: ctx,
             viewport: viewport
         });
-
+        
         await renderTask.promise;
         
-        // 🧹 LIMPIA PÁGINA
+        // 🧹 LIMPIAR MEMORIA
         page.cleanup();
         
-        // ✨ ANIMACIÓN
+        // ✨ MOSTRAR CON ANIMACIÓN
         requestAnimationFrame(() => {
             canvas.style.opacity = "1";
         });
-
+        
         return pageNum;
         
     } catch (err) {
