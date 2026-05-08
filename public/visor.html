@@ -38,14 +38,17 @@
         </div>
     </header>
 
+    <!-- ✅ CORREGIDO: main separado del loader para que no comparta overflow -->
     <main class="viewer">
         <div id="pdfContainer" class="pdf-view"></div>
-        <div id="loader" class="loader">
-            <div class="spinner"></div>
-            <p>📄 Cargando documento...</p>
-            <small id="progressText">Procesando páginas | 2 columnas</small>
-        </div>
     </main>
+
+    <!-- ✅ CORREGIDO: loader fuera del main para que no interfiera con el scroll del contenido -->
+    <div id="loader" class="loader">
+        <div class="spinner"></div>
+        <p>📄 Cargando documento...</p>
+        <small id="progressText">Procesando páginas | 2 columnas</small>
+    </div>
 </div>
 
 <div id="connectionStatus" class="connection-indicator">
@@ -54,7 +57,21 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+
+<!-- ✅ CORREGIDO: primero el worker ANTES de cargar pdf.min.js -->
+<script>
+    window.pdfjsWorkerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js";
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js"></script>
+
+<!-- ✅ CORREGIDO: configurar worker después de cargar la librería -->
+<script>
+    if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js";
+    }
+</script>
+
 <script src="visor.js"></script>
 
 </body>
