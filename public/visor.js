@@ -462,40 +462,38 @@ async function loadPDF(){
         // 🎨 GRID LAYOUT
         // =========================
 
-        if(modoMovil){
+        if (modoMovil) {
 
-            container.style.display =
-                "flex";
+            container.style.display = "flex";
+            container.style.flexDirection = "column";
+            container.style.alignItems = "center";
+            container.style.gap = "20px";
 
-            container.style.flexDirection =
-                "column";
+        } else {
 
-            container.style.alignItems =
-                "center";
-
-            container.style.gap =
-                "20px";
-
-        }else{
-
-            // ✅ 2 COLUMNAS REALES
-            container.style.display =
-                "grid";
+            // ✅ GRID 2 COLUMNAS REAL
+            container.style.display = "grid";
 
             container.style.gridTemplateColumns =
-                "repeat(2,minmax(0,1fr))";
+                "repeat(2, minmax(420px, 1fr))";
+
+            container.style.justifyContent =
+                "center";
 
             container.style.alignItems =
                 "start";
-
-            container.style.justifyItems =
-                "center";
 
             container.style.gap =
                 "24px";
 
             container.style.padding =
                 "20px";
+
+            container.style.maxWidth =
+                "1600px";
+
+            container.style.margin =
+                "0 auto";
         }
 
         // =========================
@@ -520,7 +518,7 @@ async function loadPDF(){
             pageWrapper.className =
                 "page-wrapper";
 
-            // 🔥 CLAVE
+            // 🔥 CONFIGURAR WRAPPER
             if(modoMovil){
 
                 pageWrapper.style.width =
@@ -529,20 +527,33 @@ async function loadPDF(){
                 pageWrapper.style.maxWidth =
                     "500px";
 
+                pageWrapper.style.display =
+                    "flex";
+
+                pageWrapper.style.justifyContent =
+                    "center";
+
+                pageWrapper.style.alignItems =
+                    "flex-start";
+
             }else{
 
-                // ✅ AQUÍ ESTABA TU ERROR
+                // ✅ 2 COLUMNAS REALES
                 pageWrapper.style.width =
-                    "auto";
-
-                pageWrapper.style.maxWidth =
                     "100%";
+
+                // 🔥 TAMAÑO CONTROLADO
+                pageWrapper.style.maxWidth =
+                    "700px";
 
                 pageWrapper.style.display =
                     "flex";
 
                 pageWrapper.style.justifyContent =
                     "center";
+
+                pageWrapper.style.alignItems =
+                    "flex-start";
             }
 
             container.appendChild(
@@ -617,7 +628,7 @@ async function renderPagina(pdf, pageNum, containerElement, token, modoMovil) {
             }
             
             const baseViewport = page.getViewport({ scale: 1 });
-            scale = (availableWidth * 0.92) / baseViewport.width;
+            scale = (availableWidth * 0.72) / baseViewport.width;
             scale = Math.min(Math.max(scale, 0.5), 1.3);
         }
         
