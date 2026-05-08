@@ -1,190 +1,19 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover" />
 <title>INTELLIALL | Visor PETS Profesional</title>
-<meta name="description" content="Visor seguro de documentos PETS con acceso controlado y visualización optimizada" />
+<meta name="description" content="Visor profesional de documentos PETS con acceso controlado y visualización optimizada" />
 <meta name="robots" content="noindex, nofollow" />
 <meta name="theme-color" content="#020617" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
-<!-- Preload de recursos críticos -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
 <link rel="preconnect" href="https://xnkpjgrxgwkfhgrrzwhu.supabase.co" />
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
-
 <link rel="stylesheet" href="styles_visor.css" />
-
-<!-- Fallback CSS para evitar FOOC (Flash of Unstyled Content) -->
-<style>
-    /* Loader inicial rápido */
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-    
-    body {
-        margin: 0;
-        padding: 0;
-        background: #020617;
-        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        overflow: hidden;
-        height: 100vh;
-        height: 100dvh;
-    }
-    
-    .app {
-        height: 100dvh;
-        display: flex;
-        flex-direction: column;
-        background: #020617;
-        opacity: 0;
-        transition: opacity 0.4s ease;
-    }
-    
-    .app.loaded {
-        opacity: 1;
-    }
-    
-    .initial-loader {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-        color: white;
-        z-index: 10000;
-        background: rgba(2,6,23,0.95);
-        backdrop-filter: blur(10px);
-        padding: 32px 48px;
-        border-radius: 24px;
-        border: 1px solid rgba(34,197,94,0.2);
-        transition: opacity 0.3s ease;
-    }
-    
-    .initial-spinner {
-        width: 50px;
-        height: 50px;
-        margin: 0 auto 16px;
-        position: relative;
-    }
-    
-    .initial-spinner-ring {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        border: 3px solid transparent;
-        border-top-color: #22c55e;
-        border-right-color: #22c55e;
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-    }
-    
-    .initial-spinner-ring:nth-child(2) {
-        width: 70%;
-        height: 70%;
-        top: 15%;
-        left: 15%;
-        border-top-color: #3b82f6;
-        border-right-color: #3b82f6;
-        animation: spin 0.6s linear reverse infinite;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    .initial-loader p {
-        margin: 0;
-        font-size: 14px;
-        color: #94a3b8;
-        font-weight: 500;
-    }
-    
-    .initial-loader small {
-        display: block;
-        margin-top: 8px;
-        font-size: 11px;
-        color: #22c55e;
-    }
-    
-    /* Loader principal mejorado */
-    .loader {
-        position: absolute;
-        inset: 0;
-        background: rgba(2,6,23,0.95);
-        backdrop-filter: blur(8px);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        z-index: 2000;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-    
-    .loader.active {
-        display: flex !important;
-        opacity: 1 !important;
-    }
-    
-    .loader .spinner {
-        width: 60px;
-        height: 60px;
-        position: relative;
-    }
-    
-    .loader .spinner::before,
-    .loader .spinner::after {
-        content: '';
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        border: 3px solid transparent;
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-    }
-    
-    .loader .spinner::before {
-        border-top-color: #22c55e;
-        border-right-color: #22c55e;
-    }
-    
-    .loader .spinner::after {
-        width: 70%;
-        height: 70%;
-        top: 15%;
-        left: 15%;
-        border-top-color: #3b82f6;
-        border-right-color: #3b82f6;
-        animation: spin 0.6s linear reverse infinite;
-    }
-    
-    .loader p {
-        margin-top: 20px;
-        color: #22c55e;
-        font-size: 14px;
-        font-weight: 500;
-    }
-    
-    .loader small {
-        color: #64748b;
-        font-size: 11px;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-</style>
-
 </head>
 <body>
 
-<!-- Loader inicial -->
 <div id="initialLoader" class="initial-loader">
     <div class="initial-spinner">
         <div class="initial-spinner-ring"></div>
@@ -195,205 +24,38 @@
 </div>
 
 <div class="app" id="app">
-
-    <!-- 🔷 HEADER PREMIUM -->
     <header class="header">
-
         <div class="logo">
             <span>📄 INTELLIALL</span>
             <small>Professional PETS Viewer</small>
         </div>
-
         <div class="controls-bar">
             <select id="petSelect" aria-label="Seleccionar mascota"></select>
             <select id="areaSelect" aria-label="Seleccionar área"></select>
         </div>
-
         <div class="actions">
-            <button onclick="logout()" class="btn-logout" aria-label="Cerrar sesión">
-                🚪 Salir
-            </button>
+            <button onclick="logout()" class="btn-logout" aria-label="Cerrar sesión">🚪 Salir</button>
         </div>
-
     </header>
 
-    <!-- 🔷 VISOR PRINCIPAL -->
     <main class="viewer">
-
-        <!-- Contenedor PDF (Grid de 2 columnas) -->
         <div id="pdfContainer" class="pdf-view"></div>
-
-        <!-- Loader mejorado con animación -->
         <div id="loader" class="loader">
             <div class="spinner"></div>
             <p>📄 Cargando documento...</p>
-            <small>Procesando páginas | 2 columnas</small>
+            <small id="progressText">Procesando páginas | 2 columnas</small>
         </div>
-
     </main>
-
 </div>
 
-<!-- 📌 INDICADOR DE CONEXIÓN -->
-<div id="connectionStatus" style="position: fixed; bottom: 12px; right: 12px; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); padding: 6px 12px; border-radius: 20px; font-size: 10px; color: #22c55e; z-index: 9999; display: none; font-weight: 500; gap: 6px; align-items: center;">
-    <span style="display: inline-block; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; animation: pulse 1.5s ease infinite;"></span>
+<div id="connectionStatus" class="connection-indicator">
+    <span></span>
     <span>Conectado</span>
 </div>
 
-<style>
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.4; }
-    }
-</style>
-
-<!-- ✅ LIBRERÍAS CORREGIDAS - VERSIONES ESTABLES Y COMPATIBLES -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js"></script>
-
-<!-- ✅ Configuración MEJORADA de PDF.js (v4.2.67 estable) -->
-<script>
-(function initPdfWorker() {
-    // Esperar a que PDF.js esté completamente cargado
-    function waitForPdfJs() {
-        if (typeof pdfjsLib !== 'undefined') {
-            // Configuración oficial para v4.2.67
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js';
-            console.log('✅ PDF.js v4.2.67 inicializado correctamente');
-            return true;
-        }
-        return false;
-    }
-    
-    // Intentar inicialización inmediata
-    if (!waitForPdfJs()) {
-        // Reintentar cada 100ms máximo 50 veces (5 segundos)
-        let attempts = 0;
-        const maxAttempts = 50;
-        const interval = setInterval(() => {
-            attempts++;
-            if (waitForPdfJs() || attempts >= maxAttempts) {
-                clearInterval(interval);
-                if (attempts >= maxAttempts) {
-                    console.error('❌ PDF.js no se pudo inicializar después de 5s');
-                }
-            }
-        }, 100);
-    }
-})();
-</script>
-
-<!-- Script principal del visor -->
 <script src="visor.js"></script>
-
-<!-- Script de inicialización adicional -->
-<script>
-    (function initializeApp() {
-        // Ocultar loader inicial cuando la app esté lista
-        window.addEventListener('load', function() {
-            const initialLoader = document.getElementById('initialLoader');
-            const app = document.getElementById('app');
-            
-            setTimeout(function() {
-                if (initialLoader) {
-                    initialLoader.style.opacity = '0';
-                    setTimeout(function() {
-                        if (initialLoader && initialLoader.parentNode) {
-                            initialLoader.style.display = 'none';
-                        }
-                    }, 300);
-                }
-                if (app) {
-                    app.classList.add('loaded');
-                }
-            }, 500);
-        });
-        
-        // Detectar conexión a internet
-        let statusTimeout;
-        function showConnectionStatus(connected) {
-            const status = document.getElementById('connectionStatus');
-            if (!status) return;
-            
-            if (connected) {
-                status.style.backgroundColor = 'rgba(34,197,94,0.9)';
-                status.style.color = 'white';
-                status.innerHTML = '<span style="background: white;"></span><span>🟢 Conectado</span>';
-                status.style.display = 'flex';
-            } else {
-                status.style.backgroundColor = 'rgba(239,68,68,0.9)';
-                status.style.color = 'white';
-                status.innerHTML = '<span style="background: #ef4444;"></span><span>🔴 Sin conexión</span>';
-                status.style.display = 'flex';
-            }
-            
-            if (statusTimeout) clearTimeout(statusTimeout);
-            statusTimeout = setTimeout(function() {
-                status.style.display = 'none';
-            }, 3000);
-        }
-        
-        window.addEventListener('online', function() {
-            showConnectionStatus(true);
-        });
-        
-        window.addEventListener('offline', function() {
-            showConnectionStatus(false);
-        });
-        
-        // Prevenir salida accidental con teclas
-        document.addEventListener('keydown', function(e) {
-            // Prevenir Ctrl+R, Ctrl+F5, etc.
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R' || e.key === 'f' || e.key === 'F')) {
-                e.preventDefault();
-                showAlert('⛔ Recarga no permitida en esta aplicación', 'warning');
-                return false;
-            }
-            // Prevenir F5
-            if (e.key === 'F5') {
-                e.preventDefault();
-                showAlert('⛔ Función no disponible', 'warning');
-                return false;
-            }
-        });
-        
-        console.log('🚀 Visor PETS 2 Columnas inicializado correctamente');
-    })();
-    
-    // Función auxiliar para alertas (por si aún no está cargada)
-    window.showAlertFallback = function(message, type) {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = 'custom-alert ' + (type || 'error');
-        alertDiv.textContent = message;
-        document.body.appendChild(alertDiv);
-        setTimeout(function() {
-            alertDiv.classList.add('show');
-        }, 10);
-        setTimeout(function() {
-            alertDiv.classList.remove('show');
-            setTimeout(function() {
-                if (alertDiv.parentNode) alertDiv.remove();
-            }, 250);
-        }, 3000);
-    };
-    
-    // Exponer showAlert globalmente
-    if (typeof showAlert === 'undefined') {
-        window.showAlert = window.showAlertFallback;
-    }
-</script>
-
-<!-- 🧪 DIAGNÓSTICO AUTOMÁTICO (opcional - puedes removerlo después) -->
-<script>
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        console.log('🧪 DIAGNÓSTICO LIBRERÍAS:');
-        console.log('- PDF.js:', typeof pdfjsLib !== 'undefined' ? '✅ CARGADO v4.2.67' : '❌ NO CARGADO');
-        console.log('- Supabase:', typeof supabase !== 'undefined' ? '✅ CARGADO v2.38.4' : '❌ NO CARGADO');
-        console.log('- WorkerSrc:', pdfjsLib?.GlobalWorkerOptions?.workerSrc || '❌ NO CONFIGURADO');
-    }, 2000);
-});
-</script>
 
 </body>
 </html>
