@@ -7,344 +7,165 @@ const supabaseClient = supabase.createClient(
 );
 
 let config = null;
-
 let pdfScale = 1;
-
-// 🔒 EVITAR MÚLTIPLES CARGAS PDF
-// 🚀 CONTROL RENDER PDF
 let renderToken = 0;
-
 let currentLoadingTask = null;
-
-let pdfDocument = null; // ✅ AGREGAR ESTA LÍNEA
-let cargandoPDF = false; // ✅ AGREGAR ESTA LÍNEA
+let pdfDocument = null;
+let cargandoPDF = false;
 
 // ===============================
 // 🔐 VALIDAR SESIÓN GOOGLE
 // ===============================
-
 (async () => {
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
 
-    try{
-
-        const {
-            data:{ session }
-        } = await supabaseClient
-            .auth
-            .getSession();
-
-        // 🚫 SIN SESIÓN
-        if(!session){
-
-            window.location.href =
-                "index.html";
-
+        if (!session) {
+            window.location.href = "index.html";
             return;
         }
 
-        const email =
-            session.user.email || "";
+        const email = session.user.email || "";
 
-        // 🔒 SOLO CORPORATIVOS
-        if(
-            !email.endsWith(
-                "@intelliall.com"
-            )
-        ){
-
-            await supabaseClient
-                .auth
-                .signOut();
-
-            showAlert(
-                "⛔ Solo se permiten correos corporativos",
-                "warning"
-            );
-
-            window.location.href =
-                "index.html";
-
+        if (!email.endsWith("@intelliall.com")) {
+            await supabaseClient.auth.signOut();
+            showAlert("⛔ Solo se permiten correos corporativos", "warning");
+            window.location.href = "index.html";
             return;
         }
-
-    }catch(err){
-
-        console.error(
-            "❌ Error validando sesión:",
-            err
-        );
-
-        window.location.href =
-            "index.html";
+    } catch (err) {
+        console.error("❌ Error validando sesión:", err);
+        window.location.href = "index.html";
     }
-
 })();
 
 // ===============================
 // 📄 CARGAR CONFIG
 // ===============================
 
-async function loadConfig(){
-
-    try{
-
-        const res =
-            await fetch("config.json");
-
-        if(!res.ok){
-
-            throw new Error(
-                "No se pudo cargar config.json"
-            );
+async function loadConfig() {
+    try {
+        const res = await fetch("config.json");
+        if (!res.ok) {
+            throw new Error("No se pudo cargar config.json");
         }
-
         config = await res.json();
-
         loadPDFList();
-
-    }catch(err){
-
-        console.error(
-            "❌ Error cargando config:",
-            err
-        );
-
-        showAlert(
-            "❌ Error cargando configuración",
-            "error"
-        );
+    } catch (err) {
+        console.error("❌ Error cargando config:", err);
+        showAlert("❌ Error cargando configuración", "error");
     }
 }
 
+
 // 📄 CARGAR LISTA PDF
-function loadPDFList(){
+function loadPDFList() {
+    try {
+        const petSelect = document.getElementById("petSelect");
 
-    try{
-
-        const petSelect =
-            document.getElementById(
-                "petSelect"
-            );
-
-        if(
-            !config ||
-            !config.pets ||
-            !Array.isArray(config.pets)
-        ){
-
-            console.error(
-                "❌ Config inválida"
-            );
-
+        if (!config || !config.pets || !Array.isArray(config.pets)) {
+            console.error("❌ Config inválida");
             return;
         }
 
-        // 🔥 LIMPIAR
         petSelect.innerHTML = "";
 
-        // 🔥 OPTIONS
         config.pets.forEach((pet, index) => {
-
-            const option =
-                document.createElement(
-                    "option"
-                );
-
+            const option = document.createElement("option");
             option.value = index;
-
-            option.textContent =
-                pet.nombre;
-
+            option.textContent = pet.nombre;
             petSelect.appendChild(option);
         });
 
-        // 🔥 DEFAULT
         petSelect.selectedIndex = 0;
-
-        // 🚫 EVITAR LISTENERS DUPLICADOS
-        petSelect.onchange =
-            updateAreas;
-
-        // 🔥 INICIAL
+        petSelect.onchange = updateAreas;
         updateAreas();
-
-    }catch(err){
-
-        console.error(
-            "❌ Error loadPDFList:",
-            err
-        );
+    } catch (err) {
+        console.error("❌ Error loadPDFList:", err);
     }
 }
 
 // 🚪 LOGOUT
-async function logout(){
-
-    try{
-
-        await supabaseClient
-            .auth
-            .signOut();
-
-    }catch(err){
-
-        console.error(
-            "❌ Error logout:",
-            err
-        );
+async function logout() {
+    try {
+        await supabaseClient.auth.signOut();
+    } catch (err) {
+        console.error("❌ Error logout:", err);
     }
-
-    window.location.href =
-        "index.html";
+    window.location.href = "index.html";
 }
 
+
 // 🔄 ACTUALIZAR ÁREAS
-function updateAreas(){
+function updateAreas() {
+    try {
+        const petSelect = document.getElementById("petSelect");
+        const areaSelect = document.getElementById("areaSelect");
+        const petIndex = petSelect.value;
 
-    try{
-
-        const petSelect =
-            document.getElementById(
-                "petSelect"
-            );
-
-        const areaSelect =
-            document.getElementById(
-                "areaSelect"
-            );
-
-        const petIndex =
-            petSelect.value;
-
-        // 🚫 VALIDAR
-        if(
-            !config ||
-            !config.pets ||
-            !config.pets[petIndex]
-        ){
+        if (!config || !config.pets || !config.pets[petIndex]) {
             return;
         }
 
-        // 🔥 LIMPIAR
         areaSelect.innerHTML = "";
+        const areas = config.pets[petIndex].archivos;
 
-        const areas =
-            config.pets[petIndex]
-            .archivos;
+        if (!areas) return;
 
-        // 🚫 VALIDAR
-        if(!areas){
-            return;
-        }
-
-        // 🔥 OPTIONS
-        Object.keys(areas)
-        .forEach(area => {
-
-            const option =
-                document.createElement(
-                    "option"
-                );
-
+        Object.keys(areas).forEach(area => {
+            const option = document.createElement("option");
             option.value = area;
-
-            option.textContent =
-                area;
-
-            areaSelect.appendChild(
-                option
-            );
+            option.textContent = area;
+            areaSelect.appendChild(option);
         });
 
-        // 🔥 DEFAULT
         areaSelect.selectedIndex = 0;
-
-        // 🚫 EVITAR DUPLICADOS
         areaSelect.onchange = () => {
-
-            if(!cargandoPDF){
-
+            if (!cargandoPDF) {
                 loadPDF();
             }
         };
 
-        // 🔥 SOLO UNA CARGA
-        if(!cargandoPDF){
-
+        if (!cargandoPDF) {
             requestAnimationFrame(() => {
-
                 loadPDF();
             });
         }
-
-    }catch(err){
-
-        console.error(
-            "❌ Error updateAreas:",
-            err
-        );
+    } catch (err) {
+        console.error("❌ Error updateAreas:", err);
     }
 }
 
-// 📱 DETECTAR MÓVIL
-function esMovil(){
 
+// 📱 DETECTAR MÓVIL
+function esMovil() {
     return window.innerWidth <= 768;
 }
 
+
 // ⏳ REGISTRAR SESIÓN EXPIRADA
-async function registrarSesionExpirada(user){
+async function registrarSesionExpirada(user) {
+    if (!user) return;
+    try {
+        await supabaseClient.from("alerts").insert({
+            user_id: user?.id || null,
+            email: user?.email || "Desconocido",
+            message: `⏳ Sesión expirada: ${user?.email || ""}`,
+            nivel: "warning",
+            visto: false,
+            created_at: new Date().toISOString()
+        });
 
-    try{
-
-        // 🔔 ALERTA
-        await supabaseClient
-            .from("alerts")
-            .insert({
-
-                user_id:
-                    user?.id || null,
-
-                email:
-                    user?.email ||
-                    "Desconocido",
-
-                message:
-                    `⏳ Sesión expirada: ${
-                        user?.email || ""
-                    }`,
-
-                nivel:"warning",
-
-                visto:false,
-
-                created_at:
-                    new Date()
-                    .toISOString()
-            });
-
-        // 📊 LOG
-        await supabaseClient
-            .from("logs")
-            .insert({
-
-                user_email:
-                    user?.email ||
-                    "Desconocido",
-
-                pet:"SESSION",
-
-                area:"Sesión expirada"
-            });
-
-    }catch(err){
-
-        console.error(
-            "❌ Error sesión expirada:",
-            err
-        );
+        await supabaseClient.from("logs").insert({
+            user_email: user?.email || "Desconocido",
+            pet: "SESSION",
+            area: "Sesión expirada"
+        });
+    } catch (err) {
+        console.error("❌ Error sesión expirada:", err);
     }
 }
+
 
 // 📥 CARGAR PDF (FIX TOTAL - 52 PÁGINAS)
 async function loadPDF() {
@@ -355,7 +176,6 @@ async function loadPDF() {
         const petIndex = document.getElementById("petSelect").value;
         const area = document.getElementById("areaSelect").value;
 
-        // 🔒 VALIDACIONES
         if (!config.pets[petIndex] || !config.pets[petIndex].archivos[area]) {
             return;
         }
@@ -364,101 +184,101 @@ async function loadPDF() {
 
         // 🔥 UI LIMPIA
         container.classList.remove("loaded");
-        container.innerHTML = ""; // ✅ LIMPIA DOM COMPLETO
+        container.innerHTML = "";
         loader.style.display = "flex";
+        cargandoPDF = true;
 
         // 🔐 SUPABASE URL
         const { data, error } = await supabaseClient
             .storage
             .from(config.bucket)
-            .createSignedUrl(fileName, 3600); // 🔄 1 HORA
+            .createSignedUrl(fileName, 3600);
 
         if (error) {
-            showAlert("❌ Error cargando PDF", "error");
-            loader.style.display = "none";
-            return;
+            throw new Error("Error obteniendo URL del PDF");
         }
 
         // 🚀 CANCELAR ANTERIOR
         if (currentLoadingTask) {
             try {
+                if (pdfDocument) {
+                    pdfDocument.destroy();
+                    pdfDocument = null;
+                }
                 currentLoadingTask.destroy();
             } catch (err) {
                 console.warn("⚠️ Task anterior destruida");
             }
+            currentLoadingTask = null;
         }
 
         const token = ++renderToken;
-        currentLoadingTask = null;
 
         // 🔥 CONFIGURACIÓN CRÍTICA PDFs GRANDES
         currentLoadingTask = pdfjsLib.getDocument({
             url: data.signedUrl,
-            verbosity: 0,              // ✅ SILENCIO
-            disableAutoFetch: true,    // ✅ MANUAL
-            rangeChunkSize: 1048576,   // ✅ 1MB
+            verbosity: 0,
+            disableAutoFetch: false,  // ✅ CAMBIADO: permitir auto-fetch para páginas completas
+            rangeChunkSize: 1048576,
             maxImageSize: 4096,
-            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', // ✅ CDN
+            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
             cMapPacked: true
         });
 
         const pdf = await currentLoadingTask.promise;
+        pdfDocument = pdf; // ✅ Guardar referencia
 
-        pdfDocument = pdf; // ✅ GUARDAR REFERENCIA
-        console.log(`✅ PDF: ${pdf.numPages} páginas`); // ✅ DEBUG
-
-        // 🚫 TOKEN VÁLIDO
         if (token !== renderToken) {
-            pdf.destroy(); // ✅ SIEMPRE DESTROY
+            pdfDocument.destroy();
+            pdfDocument = null;
+            currentLoadingTask = null;
+            cargandoPDF = false;
             return;
         }
 
         const totalPages = pdf.numPages;
+        console.log(`✅ PDF: ${totalPages} páginas cargadas`);
         console.log(`📄 Renderizando ${totalPages} páginas...`);
 
         const modoMovil = esMovil();
-        const renderedPages = []; // ✅ TRACK PÁGINAS
+        const pagePromises = [];
 
-        // 🔥 BATCH RENDERIZADO (5 PÁGINAS POR VEZ)
-        for (let batchStart = 1; batchStart <= totalPages; batchStart += 5) {
+        // 🔥 RENDERIZADO SECUENCIAL CON BATCH DE 3 (más estable)
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
             if (token !== renderToken) {
+                console.log(`🛑 Render cancelado en página ${pageNum}`);
                 break;
             }
 
-            const batchEnd = Math.min(batchStart + 4, totalPages);
-            const batchPromises = [];
-
-            // 🚀 PROCESAR BATCH
-            for (let i = batchStart; i <= batchEnd; i++) {
-                batchPromises.push(
-                    renderSinglePage(pdf, i, container, modoMovil, token)
-                );
-            }
-
-            // ⏳ ESPERAR BATCH
-            await Promise.all(batchPromises);
+            // Renderizar página actual
+            await renderSinglePage(pdf, pageNum, container, modoMovil, token);
             
-            // 🧹 LIMPIA MEMORIA CADA 5 PÁGINAS
-            if (batchStart % 15 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                console.log(`✅ Batch ${batchStart}/${totalPages} completado`);
+            // Pequeña pausa cada 5 páginas para liberar el event loop
+            if (pageNum % 5 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+                console.log(`✅ Progreso: ${pageNum}/${totalPages} páginas renderizadas`);
             }
         }
 
-        // 🧹 DESTROY DEFINITIVO
+        // ✅ VERIFICAR QUE NO SE CANCELÓ ANTES DE DESTRUIR
+        if (token === renderToken) {
+            console.log(`✅ Renderizado completado: ${totalPages} páginas`);
+            container.classList.add("loaded");
+        } else {
+            console.log(`🛑 Renderizado cancelado antes de completar`);
+        }
+
+        // 🧹 LIMPIEZA FINAL - SOLO UNA VEZ
         if (pdfDocument) {
             pdfDocument.destroy();
             pdfDocument = null;
         }
         currentLoadingTask = null;
-
-        // ✅ DESTROY PDF - CRÍTICO
-        pdf.destroy();
-        currentLoadingTask = null;
+        cargandoPDF = false;
 
         // 👤 LOG
         const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user) {
+        if (user && token === renderToken) {
             await supabaseClient.from("logs").insert({
                 user_email: user.email,
                 pet: config.pets[petIndex].nombre,
@@ -466,32 +286,40 @@ async function loadPDF() {
             });
         }
 
-        // 🔥 UI FINAL
-        container.classList.add("loaded");
         loader.style.display = "none";
 
     } catch (err) {
         console.error("❌ Error loadPDF:", err);
+        
+        // Limpieza segura en caso de error
+        if (pdfDocument) {
+            try {
+                pdfDocument.destroy();
+            } catch (e) {}
+            pdfDocument = null;
+        }
         if (currentLoadingTask) {
             try {
                 currentLoadingTask.destroy();
             } catch (e) {}
+            currentLoadingTask = null;
         }
+        
         document.getElementById("loader").style.display = "none";
-        currentLoadingTask = null;
+        cargandoPDF = false;
         showAlert(`❌ Error PDF: ${err.message}`, "error");
     }
 }
 
+
 // 🎯 FUNCIÓN RENDER PÁGINA INDIVIDUAL (OPTIMIZADA)
 async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
-    if (token !== renderToken) return null;
+    if (token !== renderToken || !pdf) return null;
 
     try {
         const page = await pdf.getPage(pageNum);
         
-        // 📏 CÁLCULO ESCALA OPTIMIZADO
-        const containerWidth = container.clientWidth;
+        const containerWidth = container.clientWidth || window.innerWidth - 40;
         const baseViewport = page.getViewport({ scale: 1 });
         
         let scale = modoMovil 
@@ -499,13 +327,12 @@ async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
             : (containerWidth * 0.95 / baseViewport.width) * pdfScale;
 
         const devicePixelRatio = modoMovil ? (window.devicePixelRatio || 2) : 1.5;
-        let finalScale = Math.min(scale * devicePixelRatio, 2.5); // ✅ LÍMITE
+        let finalScale = Math.min(scale * devicePixelRatio, 2.5);
 
         const viewport = page.getViewport({ scale: finalScale });
         
-        // 🖼️ CANVAS OPTIMIZADO
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d"); // ✅ SIN ALPHA POR DEFAULT
+        const ctx = canvas.getContext("2d", { alpha: false }); // ✅ alpha: false mejora rendimiento
         
         canvas.width = Math.floor(viewport.width);
         canvas.height = Math.floor(viewport.height);
@@ -513,29 +340,40 @@ async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
         canvas.style.width = `${Math.floor(viewport.width / devicePixelRatio)}px`;
         canvas.style.height = `${Math.floor(viewport.height / devicePixelRatio)}px`;
         canvas.style.opacity = "0";
-        canvas.style.transition = "opacity 0.3s ease";
+        canvas.style.transition = "opacity 0.2s ease";
+        canvas.style.display = "block";
+        canvas.style.margin = "0 auto";
 
-        // 📦 WRAPPER
         const pageWrapper = document.createElement("div");
         pageWrapper.className = "page-wrapper";
+        pageWrapper.style.marginBottom = "10px";
+        pageWrapper.style.display = "flex";
+        pageWrapper.style.justifyContent = "center";
         pageWrapper.appendChild(canvas);
+        
+        // ✅ Verificar token antes de agregar al DOM
+        if (token !== renderToken) {
+            return null;
+        }
+        
         container.appendChild(pageWrapper);
 
-        // 🎨 RENDER
         const renderTask = page.render({
             canvasContext: ctx,
-            viewport: viewport
+            viewport: viewport,
+            background: "white" // ✅ Fondo blanco mejora rendimiento
         });
 
         await renderTask.promise;
         
-        // 🧹 LIMPIA PÁGINA INMEDIATO
+        // ✅ Limpiar página después de renderizar
         page.cleanup();
         
-        // ✨ ANIMACIÓN
-        requestAnimationFrame(() => {
-            canvas.style.opacity = "1";
-        });
+        if (token === renderToken) {
+            requestAnimationFrame(() => {
+                if (canvas) canvas.style.opacity = "1";
+            });
+        }
 
         return pageNum;
         
@@ -545,109 +383,55 @@ async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
     }
 }
 
-function showAlert(
-    message,
-    type = "error"
-){
 
-    // 🚫 ELIMINAR ALERTAS ANTERIORES
-    document
-        .querySelectorAll(".custom-alert")
-        .forEach(el => el.remove());
+function showAlert(message, type = "error") {
+    document.querySelectorAll(".custom-alert").forEach(el => el.remove());
 
-    // 🔥 CREAR
-    const alert =
-        document.createElement("div");
-
-    alert.className =
-        `custom-alert ${type}`;
-
+    const alert = document.createElement("div");
+    alert.className = `custom-alert ${type}`;
     alert.textContent = message;
-
     document.body.appendChild(alert);
 
-    // 🚀 ANIMACIÓN SUAVE
     requestAnimationFrame(() => {
-
         alert.classList.add("show");
     });
 
-    // ⏳ AUTO REMOVE
-    const removeTimer =
+    setTimeout(() => {
+        alert.classList.remove("show");
         setTimeout(() => {
-
-            alert.classList.remove("show");
-
-            // 🔥 ESPERAR TRANSICIÓN
-            setTimeout(() => {
-
-                if(alert.parentNode){
-
-                    alert.remove();
-                }
-
-                clearTimeout(removeTimer);
-
-            }, 250);
-
-        }, 3000);
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 250);
+    }, 3000);
 }
+
 
 // ===============================
 // 🔐 CONTROL SESIÓN
 // ===============================
 
-// ⏱️ ÚLTIMA ACTIVIDAD
 let lastActivity = Date.now();
-
-// ⏳ 10 MINUTOS
-const TIEMPO_MAX =
-    10 * 60 * 1000;
-
-// 🚫 THROTTLE
+const TIEMPO_MAX = 10 * 60 * 1000;
 let activityTimeout = null;
+let verificandoSesion = false;
 
-// ===============================
-// 🎯 ACTUALIZAR ACTIVIDAD
-// ===============================
-function actualizarActividad(){
-
-    // 🚫 EVITAR SPAM
-    if(activityTimeout){
-        return;
-    }
-
-    activityTimeout =
-        setTimeout(() => {
-
-            lastActivity = Date.now();
-
-            activityTimeout = null;
-
-        }, 300);
+function actualizarActividad() {
+    if (activityTimeout) return;
+    activityTimeout = setTimeout(() => {
+        lastActivity = Date.now();
+        activityTimeout = null;
+    }, 300);
 }
+
 
 // ===============================
 // 🎧 EVENTOS
 // ===============================
 
-document.addEventListener(
-    "click",
-    actualizarActividad,
-    { passive:true }
-);
-
-document.addEventListener(
-    "touchstart",
-    actualizarActividad,
-    { passive:true }
-);
-
-document.addEventListener(
-    "keydown",
-    actualizarActividad,
-    { passive:true }
-);
+document.addEventListener("click", actualizarActividad, { passive: true });
+document.addEventListener("touchstart", actualizarActividad, { passive: true });
+document.addEventListener("keydown", actualizarActividad, { passive: true });
 
 // 🚫 NO USAR SCROLL GLOBAL
 // document.addEventListener("scroll", actualizarActividad);
@@ -715,230 +499,92 @@ if("ongesturestart" in window){
 // 🔐 VERIFICAR SESIÓN
 // ===============================
 
-let verificandoSesion = false;
-
 setInterval(async () => {
-
-    // 🚫 EVITAR MÚLTIPLES CHECKS
-    if(verificandoSesion){
-        return;
-    }
-
+    if (verificandoSesion) return;
     verificandoSesion = true;
 
-    try{
-
+    try {
         const ahora = Date.now();
-
-        // ⏳ EXPIRADA
-        if(
-            ahora - lastActivity >
-            TIEMPO_MAX
-        ){
-
-            console.log(
-                "⏳ Sesión expirada"
-            );
-
-            const {
-                data:{ user }
-            } = await supabaseClient
-                .auth
-                .getUser();
-
-            // 🚨 REGISTRAR
-            await registrarSesionExpirada(
-                user
-            );
-
-            // 🔓 LOGOUT
-            await supabaseClient
-                .auth
-                .signOut();
-
-            // 🔔 ALERTA
-            showAlert(
-                "⏳ Sesión expirada por inactividad",
-                "error"
-            );
-
-            // 🚀 REDIRECT ÚNICO
+        if (ahora - lastActivity > TIEMPO_MAX) {
+            console.log("⏳ Sesión expirada");
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            await registrarSesionExpirada(user);
+            await supabaseClient.auth.signOut();
+            showAlert("⏳ Sesión expirada por inactividad", "error");
             setTimeout(() => {
-
-                window.location.href =
-                    "index.html";
-
+                window.location.href = "index.html";
             }, 1800);
         }
-
-    }catch(err){
-
-        console.error(
-            "❌ Error verificando sesión:",
-            err
-        );
-
-    }finally{
-
+    } catch (err) {
+        console.error("❌ Error verificando sesión:", err);
+    } finally {
         verificandoSesion = false;
     }
-
 }, 30000);
 
+
 // 🚫 BLOQUEOS
-document.addEventListener(
-    "contextmenu",
-    e => e.preventDefault()
-);
-
-// 🚫 F12
-document.addEventListener(
-    "keydown",
-    e => {
-
-        if(
-            e.key === "F12" ||
-
-            (
-                e.ctrlKey &&
-                e.shiftKey &&
-                e.key === "I"
-            )
-        ){
-            e.preventDefault();
-        }
+document.addEventListener("contextmenu", e => e.preventDefault());
+document.addEventListener("keydown", e => {
+    if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
+        e.preventDefault();
     }
-);
+});
 
 // ===============================
 // 🚀 INIT
 // ===============================
-document.addEventListener(
-    "DOMContentLoaded",
-    async () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const device_id = localStorage.getItem("device_id");
+        const { data: { session } } = await supabaseClient.auth.getSession();
 
-        try{
-
-            // 🔐 DEVICE
-            const device_id =
-                localStorage.getItem(
-                    "device_id"
-                );
-
-            // 🔑 SESSION
-            const {
-                data:{ session }
-            } = await supabaseClient
-                .auth
-                .getSession();
-
-            // 🚫 SIN SESIÓN
-            if(!session){
-
-                showAlert(
-                    "⏳ Sesión expirada",
-                    "error"
-                );
-
-                setTimeout(() => {
-
-                    window.location.href =
-                        "index.html";
-
-                }, 1500);
-
-                return;
-            }
-
-            const user =
-                session.user;
-
-            // ⏳ EXPIRADA
-            const expiresAt =
-                session.expires_at * 1000;
-
-            if(Date.now() > expiresAt){
-
-                await registrarSesionExpirada(
-                    user
-                );
-
-                await supabaseClient
-                    .auth
-                    .signOut();
-
-                showAlert(
-                    "⏳ Sesión expirada por inactividad",
-                    "error"
-                );
-
-                setTimeout(() => {
-
-                    window.location.href =
-                        "index.html";
-
-                }, 1500);
-
-                return;
-            }
-
-            // ⚠️ DEVICE
-            if(!device_id){
-
-                console.warn(
-                    "⚠️ device_id no encontrado"
-                );
-            }
-
-            // 🚀 LOAD CONFIG
-            await loadConfig();
-
-            // 🚀 INIT PDF EVENTS
-            initPDFZoom();
-
-        }catch(err){
-
-            console.error(
-                "❌ Error init:",
-                err
-            );
-
-            showAlert(
-                "❌ Error iniciando visor",
-                "error"
-            );
+        if (!session) {
+            showAlert("⏳ Sesión expirada", "error");
+            setTimeout(() => {
+                window.location.href = "index.html";
+            }, 1500);
+            return;
         }
+
+        const user = session.user;
+        const expiresAt = session.expires_at * 1000;
+
+        if (Date.now() > expiresAt) {
+            await registrarSesionExpirada(user);
+            await supabaseClient.auth.signOut();
+            showAlert("⏳ Sesión expirada por inactividad", "error");
+            setTimeout(() => {
+                window.location.href = "index.html";
+            }, 1500);
+            return;
+        }
+
+        if (!device_id) {
+            console.warn("⚠️ device_id no encontrado");
+        }
+
+        await loadConfig();
+        initPDFZoom();
+    } catch (err) {
+        console.error("❌ Error init:", err);
+        showAlert("❌ Error iniciando visor", "error");
     }
-);
+});
 
-function initPDFZoom(){
 
-    const pdfContainer =
-        document.getElementById(
-            "pdfContainer"
-        );
+// ===============================
+// 🔍 ZOOM PDF
+// ===============================
+let initialDistance = null;
+let zoomTimeout = null;
 
-    if(!pdfContainer){
-        return;
-    }
+function initPDFZoom() {
+    const pdfContainer = document.getElementById("pdfContainer");
+    if (!pdfContainer) return;
 
-    // ===============================
-    // 🖥️ ZOOM RUEDA
-    // ===============================
-    pdfContainer.addEventListener(
-        "wheel",
-        handleWheelZoom,
-        { passive:false }
-    );
-
-    // ===============================
-    // 📱 PINCH
-    // ===============================
-    pdfContainer.addEventListener(
-        "touchmove",
-        handlePinchZoom,
-        { passive:false }
-    );
+    pdfContainer.addEventListener("wheel", handleWheelZoom, { passive: false });
+    pdfContainer.addEventListener("touchmove", handlePinchZoom, { passive: false });
 }
 
 // ===============================
@@ -985,112 +631,79 @@ function initPDFZoom(){
 // ===============================
 // 🖥️ WHEEL ZOOM
 // ===============================
-async function handleWheelZoom(e){
-
-    // 🚫 SOLO CTRL + WHEEL
-    if(!e.ctrlKey){
-        return;
-    }
-
+async function handleWheelZoom(e) {
+    if (!e.ctrlKey) return;
     e.preventDefault();
+    if (zoomTimeout) return;
 
-    // 🚫 EVITAR SPAM
-    if(zoomTimeout){
-        return;
-    }
-
-    // 🔍 ZOOM
-    if(e.deltaY < 0){
-
+    if (e.deltaY < 0) {
         pdfScale += 0.1;
-
-    }else{
-
+    } else {
         pdfScale -= 0.1;
     }
 
-    // 🔒 LIMITES
-    pdfScale =
-        Math.min(
-            Math.max(0.6, pdfScale),
-            3
-        );
+    pdfScale = Math.min(Math.max(0.6, pdfScale), 3);
 
-    // 🚀 THROTTLE
-    zoomTimeout =
-        setTimeout(async () => {
-
-            await loadPDF();
-
-            zoomTimeout = null;
-
-        }, 120);
+    zoomTimeout = setTimeout(async () => {
+        await loadPDF();
+        zoomTimeout = null;
+    }, 120);
 }
+
 
 // ===============================
 // 📱 PINCH ZOOM
 // ===============================
-async function handlePinchZoom(e){
+async function handleWheelZoom(e) {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    if (zoomTimeout) return;
 
-    if(e.touches.length !== 2){
-        return;
+    if (e.deltaY < 0) {
+        pdfScale += 0.1;
+    } else {
+        pdfScale -= 0.1;
     }
 
+    pdfScale = Math.min(Math.max(0.6, pdfScale), 3);
+
+    zoomTimeout = setTimeout(async () => {
+        await loadPDF();
+        zoomTimeout = null;
+    }, 120);
+}
+
+async function handlePinchZoom(e) {
+    if (e.touches.length !== 2) return;
     e.preventDefault();
 
-    const dx =
-        e.touches[0].clientX -
-        e.touches[1].clientX;
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
 
-    const dy =
-        e.touches[0].clientY -
-        e.touches[1].clientY;
-
-    const distance =
-        Math.sqrt(dx * dx + dy * dy);
-
-    // 🚀 INIT
-    if(!initialDistance){
-
+    if (!initialDistance) {
         initialDistance = distance;
-
         return;
     }
 
-    const diff =
-        distance - initialDistance;
+    const diff = distance - initialDistance;
+    if (Math.abs(diff) < 8) return;
 
-    // 🚫 FILTRAR MICRO MOVIMIENTOS
-    if(Math.abs(diff) < 8){
-        return;
-    }
-
-    // 🔍 ZOOM
     pdfScale += diff * 0.0008;
-
-    // 🔒 LIMITES
-    pdfScale =
-        Math.min(
-            Math.max(0.6, pdfScale),
-            3
-        );
-
+    pdfScale = Math.min(Math.max(0.6, pdfScale), 3);
     initialDistance = distance;
 
-    // 🚫 EVITAR SPAM
-    if(zoomTimeout){
-        return;
-    }
-
-    zoomTimeout =
-        setTimeout(async () => {
-
-            await loadPDF();
-
-            zoomTimeout = null;
-
-        }, 150);
+    if (zoomTimeout) return;
+    zoomTimeout = setTimeout(async () => {
+        await loadPDF();
+        zoomTimeout = null;
+    }, 150);
 }
+
+document.addEventListener("touchend", () => {
+    initialDistance = null;
+});
+
 
 // ===============================
 // 📱 TOUCH END
