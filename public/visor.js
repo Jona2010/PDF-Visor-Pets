@@ -343,7 +343,7 @@ async function registrarSesionExpirada(user){
     }
 }
 
-// 📥 CARGAR PDF COMPLETO (TODAS LAS PÁGINAS)
+// 📥 CARGAR PDF COMPLETO (2 PÁGINAS POR FILA EN ESCRITORIO)
 async function loadPDF() {
     try {
         const container = document.getElementById("pdfContainer");
@@ -392,9 +392,9 @@ async function loadPDF() {
         currentLoadingTask = pdfjsLib.getDocument({
             url: data.signedUrl,
             verbosity: 0,
-            disableAutoFetch: false,     // ✅ CAMBIADO: CARGAR TODAS LAS PÁGINAS
-            rangeChunkSize: 65536,       // ✅ TAMAÑO ÓPTIMO
-            maxImageSize: -1,            // ✅ SIN LÍMITE
+            disableAutoFetch: false,
+            rangeChunkSize: 65536,
+            maxImageSize: -1,
             cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
             cMapPacked: true
         });
@@ -411,22 +411,52 @@ async function loadPDF() {
         }
 
         const totalPages = pdf.numPages;
-        console.log(`📄 Renderizando TODAS LAS ${totalPages} páginas...`);
-
         const modoMovil = esMovil();
         
-        // 🔥 RENDERIZAR TODAS LAS PÁGINAS (SIN LOTES)
-        for (let i = 1; i <= totalPages; i++) {
-            if (token !== renderToken) {
-                break;
+        if (modoMovil) {
+            // 📱 MÓVIL: 1 página por fila
+            console.log(`📄 MÓVIL - Renderizando ${totalPages} páginas...`);
+            
+            for (let i = 1; i <= totalPages; i++) {
+                if (token !== renderToken) break;
+                
+                await renderSinglePageMovil(pdf, i, container, token);
+                
+                if (i % 5 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                    console.log(`📄 Progreso móvil: ${i}/${totalPages}`);
+                }
             }
+        } else {
+            // 🖥️ ESCRITORIO: 2 páginas por fila
+            console.log(`📄 ESCRITORIO - Renderizando ${totalPages} páginas en 2 columnas...`);
             
-            await renderSinglePage(pdf, i, container, modoMovil, token);
-            
-            // 💡 PEQUEÑA PAUSA PARA NO BLOQUEAR EL UI
-            if (i % 10 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 10));
-                console.log(`📄 Progreso: ${i}/${totalPages} páginas renderizadas`);
+            for (let i = 1; i <= totalPages; i += 2) {
+                if (token !== renderToken) break;
+                
+                // Crear una nueva fila para cada par de páginas
+                const row = document.createElement("div");
+                row.style.display = "flex";
+                row.style.flexDirection = "row";
+                row.style.justifyContent = "center";
+                row.style.alignItems = "flex-start";
+                row.style.gap = "30px";
+                row.style.marginBottom = "30px";
+                row.style.width = "100%";
+                container.appendChild(row);
+                
+                // Renderizar página 1 del par
+                await renderSinglePageEscritorio(pdf, i, row, token);
+                
+                // Renderizar página 2 del par (si existe)
+                if (i + 1 <= totalPages) {
+                    await renderSinglePageEscritorio(pdf, i + 1, row, token);
+                }
+                
+                console.log(`✅ Par ${Math.ceil(i/2)}/${Math.ceil(totalPages/2)} completado`);
+                
+                // Pequeña pausa para no bloquear UI
+                await new Promise(resolve => setTimeout(resolve, 5));
             }
         }
 
@@ -447,7 +477,7 @@ async function loadPDF() {
             await supabaseClient.from("logs").insert({
                 user_email: user.email,
                 pet: config.pets[petIndex].nombre,
-                area: `${area} | ${totalPages} PÁGINAS`
+                area: `${area} | ${totalPages} PÁGINAS | ${modoMovil ? '1 COLUMNA' : '2 COLUMNAS'}`
             });
         }
 
@@ -455,7 +485,7 @@ async function loadPDF() {
         container.classList.add("loaded");
         loader.style.display = "none";
         
-        console.log(`✅ RENDER COMPLETO: ${totalPages} páginas mostradas`);
+        console.log(`✅ RENDER COMPLETO: ${totalPages} páginas en ${modoMovil ? totalPages : Math.ceil(totalPages/2)} filas`);
 
     } catch (err) {
         console.error("❌ Error loadPDF:", err);
@@ -470,97 +500,123 @@ async function loadPDF() {
     }
 }
 
-// 🎯 FUNCIÓN RENDER PÁGINA INDIVIDUAL
-// 🎯 FUNCIÓN RENDER PÁGINA INDIVIDUAL (2 PÁGINAS POR FILA)
-async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
+// 🎯 RENDER PÁGINA PARA ESCRITORIO (2 COLUMNAS)
+async function renderSinglePageEscritorio(pdf, pageNum, rowContainer, token) {
     if (token !== renderToken) return null;
 
     try {
         const page = await pdf.getPage(pageNum);
         
-        // 📏 CÁLCULO ESCALA OPTIMIZADO
-        let containerWidth;
+        // Calcular escala para escritorio - cada página ocupa el 50% del ancho disponible
+        const rowWidth = rowContainer.clientWidth;
+        let targetWidth = (rowWidth / 2) - 20; // Dividir entre 2 columnas menos gap
         
-        if (!modoMovil) {
-            // En escritorio: calcular ancho para 2 columnas
-            const gridGap = 30; // gap entre columnas en px
-            const containerRect = container.getBoundingClientRect();
-            const availableWidth = containerRect.width - gridGap;
-            containerWidth = availableWidth / 2;
-        } else {
-            // En móvil: usar ancho completo
-            containerWidth = container.clientWidth;
-        }
+        if (targetWidth < 300) targetWidth = 300;
         
         const baseViewport = page.getViewport({ scale: 1 });
+        let scale = targetWidth / baseViewport.width;
         
-        let scale = modoMovil 
-            ? ((window.innerWidth - 40) / baseViewport.width) * pdfScale
-            : (containerWidth * 0.95 / baseViewport.width) * pdfScale;
-
-        // Límites de escala
-        scale = Math.min(Math.max(scale, 0.5), 2.5);
+        // Limitar escala
+        scale = Math.min(Math.max(scale, 0.5), 2.0);
         
-        const devicePixelRatio = modoMovil ? (window.devicePixelRatio || 2) : 1.5;
-        let finalScale = scale * devicePixelRatio;
-
-        const viewport = page.getViewport({ scale: finalScale });
+        const viewport = page.getViewport({ scale: scale });
         
-        // 🖼️ CREAR CANVAS
+        // Crear canvas
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
-        
-        canvas.style.width = `${Math.floor(viewport.width / devicePixelRatio)}px`;
-        canvas.style.height = `${Math.floor(viewport.height / devicePixelRatio)}px`;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
         canvas.style.opacity = "0";
         canvas.style.transition = "opacity 0.3s ease";
         canvas.style.display = "block";
+        canvas.style.boxShadow = "0 10px 25px rgba(0,0,0,0.3)";
+        canvas.style.borderRadius = "8px";
         
-        // 📦 CREAR WRAPPER
+        // Wrapper
         const pageWrapper = document.createElement("div");
         pageWrapper.className = "page-wrapper";
-        pageWrapper.setAttribute("data-page", pageNum);
+        pageWrapper.style.flex = "1";
+        pageWrapper.style.display = "flex";
+        pageWrapper.style.justifyContent = "center";
+        pageWrapper.style.minWidth = "0";
         pageWrapper.appendChild(canvas);
         
-        // 🎯 ORGANIZAR EN PAREJAS (2 por fila)
-        // Buscar si ya existe una fila con espacio para otra página
-        const existingRows = container.querySelectorAll(':scope > div');
-        let targetRow = null;
+        rowContainer.appendChild(pageWrapper);
         
-        if (!modoMovil) {
-            // En escritorio: buscar una fila que tenga menos de 2 páginas
-            for (const row of existingRows) {
-                if (row.children.length < 2) {
-                    targetRow = row;
-                    break;
-                }
-            }
-        }
-        
-        // Si no hay fila disponible (o es móvil), crear una nueva
-        if (!targetRow) {
-            targetRow = document.createElement("div");
-            container.appendChild(targetRow);
-        }
-        
-        // Añadir la página a la fila
-        targetRow.appendChild(pageWrapper);
-        
-        // 🎨 RENDERIZAR
+        // Renderizar
         const renderTask = page.render({
             canvasContext: ctx,
             viewport: viewport
         });
         
         await renderTask.promise;
-        
-        // 🧹 LIMPIAR MEMORIA
         page.cleanup();
         
-        // ✨ MOSTRAR CON ANIMACIÓN
+        requestAnimationFrame(() => {
+            canvas.style.opacity = "1";
+        });
+        
+        return pageNum;
+        
+    } catch (err) {
+        console.warn(`⚠️ Error página ${pageNum}:`, err);
+        return null;
+    }
+}
+
+// 🎯 RENDER PÁGINA PARA MÓVIL (1 COLUMNA)
+async function renderSinglePageMovil(pdf, pageNum, container, token) {
+    if (token !== renderToken) return null;
+
+    try {
+        const page = await pdf.getPage(pageNum);
+        
+        // Calcular escala para móvil
+        const containerWidth = container.clientWidth - 40;
+        const baseViewport = page.getViewport({ scale: 1 });
+        let scale = (containerWidth * 0.95) / baseViewport.width;
+        scale = Math.min(Math.max(scale, 0.5), 2.5);
+        
+        const viewport = page.getViewport({ scale: scale });
+        
+        // Crear canvas
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+        canvas.style.opacity = "0";
+        canvas.style.transition = "opacity 0.3s ease";
+        canvas.style.display = "block";
+        canvas.style.margin = "0 auto";
+        canvas.style.boxShadow = "0 10px 25px rgba(0,0,0,0.3)";
+        canvas.style.borderRadius = "8px";
+        
+        // Wrapper
+        const pageWrapper = document.createElement("div");
+        pageWrapper.className = "page-wrapper";
+        pageWrapper.style.width = "100%";
+        pageWrapper.style.display = "flex";
+        pageWrapper.style.justifyContent = "center";
+        pageWrapper.style.marginBottom = "20px";
+        pageWrapper.appendChild(canvas);
+        
+        container.appendChild(pageWrapper);
+        
+        // Renderizar
+        const renderTask = page.render({
+            canvasContext: ctx,
+            viewport: viewport
+        });
+        
+        await renderTask.promise;
+        page.cleanup();
+        
         requestAnimationFrame(() => {
             canvas.style.opacity = "1";
         });
