@@ -428,36 +428,51 @@ async function loadPDF() {
                 }
             }
         } else {
-            // 🖥️ ESCRITORIO: 2 páginas por fila
+            // 🖥️ ESCRITORIO: 2 páginas por fila (CORREGIDO)
             console.log(`📄 ESCRITORIO - Renderizando ${totalPages} páginas en 2 columnas...`);
             
-            for (let i = 1; i <= totalPages; i += 2) {
+            // Crear un contenedor con CSS Grid para las filas
+            container.style.display = 'grid';
+            container.style.gridTemplateColumns = 'repeat(2, 1fr)';
+            container.style.gap = '30px';
+            container.style.alignItems = 'start';
+            container.style.justifyContent = 'center';
+            container.style.maxWidth = '1600px';
+            container.style.margin = '0 auto';
+            container.style.padding = '20px';
+            
+            // Array para almacenar las promesas de renderizado
+            const renderPromises = [];
+            
+            // Renderizar todas las páginas en orden
+            for (let i = 1; i <= totalPages; i++) {
                 if (token !== renderToken) break;
                 
-                // Crear una nueva fila para cada par de páginas
-                const row = document.createElement("div");
-                row.style.display = "flex";
-                row.style.flexDirection = "row";
-                row.style.justifyContent = "center";
-                row.style.alignItems = "flex-start";
-                row.style.gap = "30px";
-                row.style.marginBottom = "30px";
-                row.style.width = "100%";
-                container.appendChild(row);
+                // Crear wrapper para cada página individual
+                const pageWrapper = document.createElement("div");
+                pageWrapper.className = "page-wrapper";
+                pageWrapper.style.display = "flex";
+                pageWrapper.style.justifyContent = "center";
+                pageWrapper.style.alignItems = "center";
+                pageWrapper.style.width = "100%";
                 
-                // Renderizar página 1 del par
-                await renderSinglePageEscritorio(pdf, i, row, token);
+                // Añadir al contenedor
+                container.appendChild(pageWrapper);
                 
-                // Renderizar página 2 del par (si existe)
-                if (i + 1 <= totalPages) {
-                    await renderSinglePageEscritorio(pdf, i + 1, row, token);
+                // Renderizar la página
+                const renderPromise = renderSinglePageEscritorio(pdf, i, pageWrapper, token);
+                renderPromises.push(renderPromise);
+                
+                // Log de progreso
+                if (i % 10 === 0) {
+                    console.log(`📄 Progreso: ${i}/${totalPages} páginas renderizadas`);
+                    await new Promise(resolve => setTimeout(resolve, 10));
                 }
-                
-                console.log(`✅ Par ${Math.ceil(i/2)}/${Math.ceil(totalPages/2)} completado`);
-                
-                // Pequeña pausa para no bloquear UI
-                await new Promise(resolve => setTimeout(resolve, 5));
             }
+            
+            // Esperar a que todas las páginas se rendericen
+            await Promise.all(renderPromises);
+            console.log(`✅ Renderizado completado: ${totalPages} páginas en grid de 2 columnas`);
         }
 
         // 🧹 LIMPIEZA
@@ -500,24 +515,24 @@ async function loadPDF() {
     }
 }
 
-// 🎯 RENDER PÁGINA PARA ESCRITORIO (2 COLUMNAS)
-async function renderSinglePageEscritorio(pdf, pageNum, rowContainer, token) {
+// 🎯 RENDER PÁGINA PARA ESCRITORIO (2 COLUMNAS) - CORREGIDO
+async function renderSinglePageEscritorio(pdf, pageNum, containerElement, token) {
     if (token !== renderToken) return null;
 
     try {
         const page = await pdf.getPage(pageNum);
         
-        // Calcular escala para escritorio - cada página ocupa el 50% del ancho disponible
-        const rowWidth = rowContainer.clientWidth;
-        let targetWidth = (rowWidth / 2) - 20; // Dividir entre 2 columnas menos gap
+        // Calcular escala para escritorio - adaptable al ancho de la columna
+        const containerWidth = containerElement.clientWidth || 600;
+        let targetWidth = containerWidth - 20;
         
         if (targetWidth < 300) targetWidth = 300;
         
         const baseViewport = page.getViewport({ scale: 1 });
         let scale = targetWidth / baseViewport.width;
         
-        // Limitar escala
-        scale = Math.min(Math.max(scale, 0.5), 2.0);
+        // Limitar escala (mínimo 0.4, máximo 1.5)
+        scale = Math.min(Math.max(scale, 0.4), 1.5);
         
         const viewport = page.getViewport({ scale: scale });
         
@@ -534,17 +549,11 @@ async function renderSinglePageEscritorio(pdf, pageNum, rowContainer, token) {
         canvas.style.display = "block";
         canvas.style.boxShadow = "0 10px 25px rgba(0,0,0,0.3)";
         canvas.style.borderRadius = "8px";
+        canvas.style.backgroundColor = "white";
         
-        // Wrapper
-        const pageWrapper = document.createElement("div");
-        pageWrapper.className = "page-wrapper";
-        pageWrapper.style.flex = "1";
-        pageWrapper.style.display = "flex";
-        pageWrapper.style.justifyContent = "center";
-        pageWrapper.style.minWidth = "0";
-        pageWrapper.appendChild(canvas);
-        
-        rowContainer.appendChild(pageWrapper);
+        // Limpiar contenedor y añadir canvas
+        containerElement.innerHTML = "";
+        containerElement.appendChild(canvas);
         
         // Renderizar
         const renderTask = page.render({
@@ -555,6 +564,7 @@ async function renderSinglePageEscritorio(pdf, pageNum, rowContainer, token) {
         await renderTask.promise;
         page.cleanup();
         
+        // Mostrar con animación
         requestAnimationFrame(() => {
             canvas.style.opacity = "1";
         });
