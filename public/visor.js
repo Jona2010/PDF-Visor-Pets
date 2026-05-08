@@ -8,11 +8,6 @@ const supabaseClient = supabase.createClient(
 
 let config = null;
 let pdfScale = 1;
-<<<<<<< HEAD
-=======
-
-// 🔒 EVITAR MÚLTIPLES CARGAS PDF
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
 let renderToken = 0;
 let currentLoadingTask = null;
 let pdfDocument = null;
@@ -47,7 +42,6 @@ let cargandoPDF = false;
 // ===============================
 // 📄 CARGAR CONFIG
 // ===============================
-
 async function loadConfig() {
     try {
         const res = await fetch("config.json");
@@ -61,7 +55,6 @@ async function loadConfig() {
         showAlert("❌ Error cargando configuración", "error");
     }
 }
-
 
 // 📄 CARGAR LISTA PDF
 function loadPDFList() {
@@ -99,7 +92,6 @@ async function logout() {
     }
     window.location.href = "index.html";
 }
-
 
 // 🔄 ACTUALIZAR ÁREAS
 function updateAreas() {
@@ -141,17 +133,10 @@ function updateAreas() {
     }
 }
 
-<<<<<<< HEAD
-
 // 📱 DETECTAR MÓVIL
 function esMovil() {
-=======
-// 📱 DETECTAR MÓVIL
-function esMovil(){
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
     return window.innerWidth <= 768;
 }
-
 
 // ⏳ REGISTRAR SESIÓN EXPIRADA
 async function registrarSesionExpirada(user) {
@@ -176,83 +161,39 @@ async function registrarSesionExpirada(user) {
     }
 }
 
-<<<<<<< HEAD
-
-// 📥 CARGAR PDF (FIX TOTAL - 52 PÁGINAS)
+// 📥 CARGAR PDF - VERSIÓN CORREGIDA
 async function loadPDF() {
     try {
         const container = document.getElementById("pdfContainer");
         const loader = document.getElementById("loader");
-=======
-// 📥 CARGAR PDF - VERSIÓN CORREGIDA CON GRID 2 COLUMNAS
-async function loadPDF(){
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
+        const petIndex = document.getElementById("petSelect").value;
+        const area = document.getElementById("areaSelect").value;
 
-    try{
-
-<<<<<<< HEAD
         if (!config.pets[petIndex] || !config.pets[petIndex].archivos[area]) {
-=======
-        const container =
-            document.getElementById(
-                "pdfContainer"
-            );
-
-        const loader =
-            document.getElementById(
-                "loader"
-            );
-
-        const petIndex =
-            document.getElementById(
-                "petSelect"
-            ).value;
-
-        const area =
-            document.getElementById(
-                "areaSelect"
-            ).value;
-
-        if(
-            !config.pets[petIndex] ||
-            !config.pets[petIndex]
-            .archivos[area]
-        ){
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
             return;
         }
 
-        const fileName =
-            config.pets[petIndex]
-            .archivos[area];
+        const fileName = config.pets[petIndex].archivos[area];
 
         // 🚫 EVITAR DOBLE CARGA
+        if (cargandoPDF) return;
         cargandoPDF = true;
 
         // 🧹 LIMPIAR
         container.innerHTML = "";
-
-<<<<<<< HEAD
-        // 🔥 UI LIMPIA
-        container.classList.remove("loaded");
-        container.innerHTML = "";
-=======
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
         loader.style.display = "flex";
-        cargandoPDF = true;
 
         // 🔐 URL
-        const {
-            data,
-            error
-        } = await supabaseClient
+        const { data, error } = await supabaseClient
             .storage
             .from(config.bucket)
-<<<<<<< HEAD
             .createSignedUrl(fileName, 3600);
 
         if (error) {
-            throw new Error("Error obteniendo URL del PDF");
+            loader.style.display = "none";
+            cargandoPDF = false;
+            showAlert("❌ Error cargando PDF", "error");
+            return;
         }
 
         // 🚀 CANCELAR ANTERIOR
@@ -260,80 +201,97 @@ async function loadPDF(){
             try {
                 if (pdfDocument) {
                     pdfDocument.destroy();
-                    pdfDocument = null;
                 }
                 currentLoadingTask.destroy();
-            } catch (err) {
-                console.warn("⚠️ Task anterior destruida");
-            }
-            currentLoadingTask = null;
+            } catch (e) {}
         }
 
         const token = ++renderToken;
 
-        // 🔥 CONFIGURACIÓN CRÍTICA PDFs GRANDES
+        // 📄 CONFIGURACIÓN PDF
         currentLoadingTask = pdfjsLib.getDocument({
             url: data.signedUrl,
             verbosity: 0,
-            disableAutoFetch: false,  // ✅ CAMBIADO: permitir auto-fetch para páginas completas
-            rangeChunkSize: 1048576,
-            maxImageSize: 4096,
-            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+            disableAutoFetch: false,
+            rangeChunkSize: 65536,
+            cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/",
             cMapPacked: true
         });
 
         const pdf = await currentLoadingTask.promise;
-        pdfDocument = pdf; // ✅ Guardar referencia
+        pdfDocument = pdf;
 
         if (token !== renderToken) {
-            pdfDocument.destroy();
-            pdfDocument = null;
-            currentLoadingTask = null;
+            if (pdfDocument) pdfDocument.destroy();
             cargandoPDF = false;
+            loader.style.display = "none";
             return;
         }
 
         const totalPages = pdf.numPages;
-        console.log(`✅ PDF: ${totalPages} páginas cargadas`);
-        console.log(`📄 Renderizando ${totalPages} páginas...`);
+        console.log(`📄 PDF CARGADO: ${totalPages} páginas`);
 
         const modoMovil = esMovil();
-        const pagePromises = [];
 
-        // 🔥 RENDERIZADO SECUENCIAL CON BATCH DE 3 (más estable)
-        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+        // 🎨 CONFIGURAR GRID LAYOUT
+        if (modoMovil) {
+            container.style.display = "flex";
+            container.style.flexDirection = "column";
+            container.style.alignItems = "center";
+            container.style.gap = "20px";
+            container.style.padding = "10px";
+        } else {
+            container.style.display = "grid";
+            container.style.gridTemplateColumns = "repeat(2, minmax(400px, 1fr))";
+            container.style.gap = "24px";
+            container.style.padding = "20px";
+            container.style.maxWidth = "1600px";
+            container.style.margin = "0 auto";
+        }
+
+        // 📄 RENDERIZAR CADA PÁGINA (UNA POR UNA)
+        for (let i = 1; i <= totalPages; i++) {
             if (token !== renderToken) {
-                console.log(`🛑 Render cancelado en página ${pageNum}`);
+                console.log(`🛑 Render cancelado en página ${i}`);
                 break;
             }
 
-            // Renderizar página actual
-            await renderSinglePage(pdf, pageNum, container, modoMovil, token);
+            // Crear wrapper para la página
+            const pageWrapper = document.createElement("div");
+            pageWrapper.className = "page-wrapper";
+            pageWrapper.style.width = "100%";
+            pageWrapper.style.display = "flex";
+            pageWrapper.style.justifyContent = "center";
+            pageWrapper.style.alignItems = "flex-start";
             
-            // Pequeña pausa cada 5 páginas para liberar el event loop
-            if (pageNum % 5 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 50));
-                console.log(`✅ Progreso: ${pageNum}/${totalPages} páginas renderizadas`);
+            if (!modoMovil) {
+                pageWrapper.style.maxWidth = "700px";
+                pageWrapper.style.margin = "0 auto";
             }
+            
+            container.appendChild(pageWrapper);
+            
+            // Renderizar página
+            await renderSinglePage(pdf, i, pageWrapper, token, modoMovil);
+            
+            // Pequeña pausa para no bloquear UI
+            if (i % 3 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+            
+            console.log(`✅ Página ${i}/${totalPages} renderizada`);
         }
 
-        // ✅ VERIFICAR QUE NO SE CANCELÓ ANTES DE DESTRUIR
-        if (token === renderToken) {
-            console.log(`✅ Renderizado completado: ${totalPages} páginas`);
-            container.classList.add("loaded");
-        } else {
-            console.log(`🛑 Renderizado cancelado antes de completar`);
-        }
-
-        // 🧹 LIMPIEZA FINAL - SOLO UNA VEZ
-        if (pdfDocument) {
+        // 🧹 LIMPIEZA
+        if (pdfDocument && token === renderToken) {
             pdfDocument.destroy();
             pdfDocument = null;
         }
         currentLoadingTask = null;
         cargandoPDF = false;
+        loader.style.display = "none";
 
-        // 👤 LOG
+        // 📝 LOG
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (user && token === renderToken) {
             await supabaseClient.from("logs").insert({
@@ -343,288 +301,47 @@ async function loadPDF(){
             });
         }
 
-        loader.style.display = "none";
+        console.log(`✅ PDF COMPLETO: ${totalPages} páginas renderizadas`);
 
     } catch (err) {
         console.error("❌ Error loadPDF:", err);
-        
-        // Limpieza segura en caso de error
         if (pdfDocument) {
-            try {
-                pdfDocument.destroy();
-            } catch (e) {}
+            try { pdfDocument.destroy(); } catch (e) {}
             pdfDocument = null;
         }
-        if (currentLoadingTask) {
-            try {
-                currentLoadingTask.destroy();
-            } catch (e) {}
-            currentLoadingTask = null;
-        }
-        
-        document.getElementById("loader").style.display = "none";
+        currentLoadingTask = null;
         cargandoPDF = false;
+        document.getElementById("loader").style.display = "none";
         showAlert(`❌ Error PDF: ${err.message}`, "error");
     }
 }
 
-
-// 🎯 FUNCIÓN RENDER PÁGINA INDIVIDUAL (OPTIMIZADA)
-async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
-    if (token !== renderToken || !pdf) return null;
-=======
-            .createSignedUrl(
-                fileName,
-                3600
-            );
-
-        if(error){
-
-            loader.style.display =
-                "none";
-
-            cargandoPDF = false;
-
-            showAlert(
-                "❌ Error cargando PDF",
-                "error"
-            );
-
-            return;
-        }
-
-        // 🚀 CANCELAR ANTERIOR
-        if(currentLoadingTask){
-
-            try{
-                currentLoadingTask.destroy();
-            }catch(e){}
-        }
-
-        const token =
-            ++renderToken;
-
-        // 📄 PDF
-        currentLoadingTask =
-            pdfjsLib.getDocument({
-
-                url:data.signedUrl,
-
-                verbosity:0,
-
-                disableAutoFetch:false,
-
-                rangeChunkSize:65536,
-
-                cMapUrl:
-                    "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/",
-
-                cMapPacked:true
-            });
-
-        const pdf =
-            await currentLoadingTask.promise;
-
-        pdfDocument = pdf;
-
-        if(token !== renderToken){
-            return;
-        }
-
-        const totalPages =
-            pdf.numPages;
-
-        const modoMovil =
-            esMovil();
-
-        // =========================
-        // 🎨 GRID LAYOUT
-        // =========================
-
-        if (modoMovil) {
-
-            container.style.display = "flex";
-            container.style.flexDirection = "column";
-            container.style.alignItems = "center";
-            container.style.gap = "20px";
-
-        } else {
-
-            // ✅ GRID 2 COLUMNAS REAL
-            container.style.display = "grid";
-
-            container.style.gridTemplateColumns =
-                "repeat(2, minmax(420px, 1fr))";
-
-            container.style.justifyContent =
-                "center";
-
-            container.style.alignItems =
-                "start";
-
-            container.style.gap =
-                "24px";
-
-            container.style.padding =
-                "20px";
-
-            container.style.maxWidth =
-                "1600px";
-
-            container.style.margin =
-                "0 auto";
-        }
-
-        // =========================
-        // 📄 RENDER
-        // =========================
-
-        for(
-            let i = 1;
-            i <= totalPages;
-            i++
-        ){
-
-            if(token !== renderToken){
-                return;
-            }
-
-            const pageWrapper =
-                document.createElement(
-                    "div"
-                );
-
-            pageWrapper.className =
-                "page-wrapper";
-
-            // 🔥 CONFIGURAR WRAPPER
-            if(modoMovil){
-
-                pageWrapper.style.width =
-                    "100%";
-
-                pageWrapper.style.maxWidth =
-                    "500px";
-
-                pageWrapper.style.display =
-                    "flex";
-
-                pageWrapper.style.justifyContent =
-                    "center";
-
-                pageWrapper.style.alignItems =
-                    "flex-start";
-
-            }else{
-
-                // ✅ 2 COLUMNAS REALES
-                pageWrapper.style.width =
-                    "100%";
-
-                // 🔥 TAMAÑO CONTROLADO
-                pageWrapper.style.maxWidth =
-                    "700px";
-
-                pageWrapper.style.display =
-                    "flex";
-
-                pageWrapper.style.justifyContent =
-                    "center";
-
-                pageWrapper.style.alignItems =
-                    "flex-start";
-            }
-
-            container.appendChild(
-                pageWrapper
-            );
-
-            await renderPagina(
-                pdf,
-                i,
-                pageWrapper,
-                token,
-                modoMovil
-            );
-        }
-
-        loader.style.display =
-            "none";
-
-        cargandoPDF = false;
-
-        console.log(
-            `✅ PDF COMPLETO ${totalPages} páginas`
-        );
-
-    }catch(err){
-
-        console.error(
-            "❌ Error loadPDF:",
-            err
-        );
-
-        cargandoPDF = false;
-
-        currentLoadingTask = null;
-
-        document.getElementById(
-            "loader"
-        ).style.display = "none";
-
-        showAlert(
-            `❌ Error PDF: ${err.message}`,
-            "error"
-        );
-    }
-}
-
-// 🎯 FUNCIÓN PARA RENDERIZAR CADA PÁGINA (OPTIMIZADA)
-async function renderPagina(pdf, pageNum, containerElement, token, modoMovil) {
+// 🎯 RENDER PÁGINA INDIVIDUAL - CORREGIDA
+async function renderSinglePage(pdf, pageNum, containerElement, token, modoMovil) {
     if (token !== renderToken) return null;
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
 
     try {
         const page = await pdf.getPage(pageNum);
         
-<<<<<<< HEAD
-        const containerWidth = container.clientWidth || window.innerWidth - 40;
-        const baseViewport = page.getViewport({ scale: 1 });
-        
-        let scale = modoMovil 
-            ? ((window.innerWidth - 20) / baseViewport.width) * pdfScale
-            : (containerWidth * 0.95 / baseViewport.width) * pdfScale;
-
-        const devicePixelRatio = modoMovil ? (window.devicePixelRatio || 2) : 1.5;
-        let finalScale = Math.min(scale * devicePixelRatio, 2.5);
-
-        const viewport = page.getViewport({ scale: finalScale });
-        
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d", { alpha: false }); // ✅ alpha: false mejora rendimiento
-=======
-        // 🔥 Calcular escala según dispositivo
+        // Calcular escala
         let scale;
         
         if (modoMovil) {
-            // Móvil: escala basada en ancho de pantalla
             const containerWidth = Math.min(window.innerWidth - 40, 500);
             const baseViewport = page.getViewport({ scale: 1 });
             scale = (containerWidth * 0.95) / baseViewport.width;
             scale = Math.min(Math.max(scale, 0.5), 2);
         } else {
-            // Escritorio: calcular ancho disponible por columna
             const gridContainer = document.getElementById("pdfContainer");
-            let availableWidth = 450; // Valor por defecto
+            let availableWidth = 450;
             
             if (gridContainer) {
                 const gridWidth = gridContainer.clientWidth;
-                // Calcular ancho por columna considerando gap de 24px y padding
                 availableWidth = (gridWidth - 48) / 2;
             }
             
             const baseViewport = page.getViewport({ scale: 1 });
-            scale = (availableWidth * 0.72) / baseViewport.width;
+            scale = (availableWidth * 0.85) / baseViewport.width;
             scale = Math.min(Math.max(scale, 0.5), 1.3);
         }
         
@@ -633,110 +350,92 @@ async function renderPagina(pdf, pageNum, containerElement, token, modoMovil) {
         // Crear canvas
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d", { alpha: false });
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
         
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         
-<<<<<<< HEAD
-        canvas.style.width = `${Math.floor(viewport.width / devicePixelRatio)}px`;
-        canvas.style.height = `${Math.floor(viewport.height / devicePixelRatio)}px`;
-        canvas.style.opacity = "0";
-        canvas.style.transition = "opacity 0.2s ease";
-        canvas.style.display = "block";
-        canvas.style.margin = "0 auto";
-
-        const pageWrapper = document.createElement("div");
-        pageWrapper.className = "page-wrapper";
-        pageWrapper.style.marginBottom = "10px";
-        pageWrapper.style.display = "flex";
-        pageWrapper.style.justifyContent = "center";
-        pageWrapper.appendChild(canvas);
-        
-        // ✅ Verificar token antes de agregar al DOM
-        if (token !== renderToken) {
-            return null;
-        }
-        
-        container.appendChild(pageWrapper);
-
-        const renderTask = page.render({
-            canvasContext: ctx,
-            viewport: viewport,
-            background: "white" // ✅ Fondo blanco mejora rendimiento
-=======
         // Estilos CSS
-        canvas.style.display = 'block';
-        canvas.style.width = modoMovil ? '100%' : '95%';
-        canvas.style.height = 'auto';
-        canvas.style.maxWidth = '100%';
-        canvas.style.backgroundColor = 'white';
-        canvas.style.borderRadius = '8px';
-        canvas.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+        canvas.style.width = "100%";
+        canvas.style.height = "auto";
+        canvas.style.maxWidth = "100%";
+        canvas.style.backgroundColor = "white";
+        canvas.style.borderRadius = "8px";
+        canvas.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
+        canvas.style.display = "block";
         
         // Limpiar contenedor y añadir canvas
         containerElement.innerHTML = "";
         containerElement.appendChild(canvas);
         
         // Renderizar
-        const renderTask = page.render({
+        await page.render({
             canvasContext: ctx,
             viewport: viewport,
-            background: 'white'
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
-        });
+            background: "white"
+        }).promise;
         
-<<<<<<< HEAD
-        // ✅ Limpiar página después de renderizar
+        // Limpiar página
         page.cleanup();
         
-        if (token === renderToken) {
-            requestAnimationFrame(() => {
-                if (canvas) canvas.style.opacity = "1";
-            });
-        }
-
-=======
-        await renderTask.promise;
-        page.cleanup();
-        
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
         return pageNum;
         
     } catch (err) {
         console.warn(`⚠️ Error página ${pageNum}:`, err);
+        
+        // Mostrar error en la página
+        const errorDiv = document.createElement("div");
+        errorDiv.style.padding = "20px";
+        errorDiv.style.textAlign = "center";
+        errorDiv.style.color = "red";
+        errorDiv.style.backgroundColor = "#ffeeee";
+        errorDiv.style.borderRadius = "8px";
+        errorDiv.textContent = `Error al cargar página ${pageNum}`;
+        containerElement.innerHTML = "";
+        containerElement.appendChild(errorDiv);
+        
         return null;
     }
 }
 
-
+// 📢 ALERTA
 function showAlert(message, type = "error") {
     document.querySelectorAll(".custom-alert").forEach(el => el.remove());
 
     const alert = document.createElement("div");
     alert.className = `custom-alert ${type}`;
     alert.textContent = message;
+    alert.style.position = "fixed";
+    alert.style.bottom = "20px";
+    alert.style.right = "20px";
+    alert.style.zIndex = "9999";
+    alert.style.padding = "12px 24px";
+    alert.style.borderRadius = "8px";
+    alert.style.backgroundColor = type === "error" ? "#dc2626" : "#f59e0b";
+    alert.style.color = "white";
+    alert.style.fontWeight = "bold";
+    alert.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
+    alert.style.opacity = "0";
+    alert.style.transition = "opacity 0.3s ease";
+    
     document.body.appendChild(alert);
 
     requestAnimationFrame(() => {
-        alert.classList.add("show");
+        alert.style.opacity = "1";
     });
 
     setTimeout(() => {
-        alert.classList.remove("show");
+        alert.style.opacity = "0";
         setTimeout(() => {
             if (alert.parentNode) {
                 alert.remove();
             }
-        }, 250);
+        }, 300);
     }, 3000);
 }
-
 
 // ===============================
 // 🔐 CONTROL SESIÓN
 // ===============================
-
 let lastActivity = Date.now();
 const TIEMPO_MAX = 10 * 60 * 1000;
 let activityTimeout = null;
@@ -750,128 +449,24 @@ function actualizarActividad() {
     }, 300);
 }
 
-
-// ===============================
-// 🎧 EVENTOS
-// ===============================
-
+// Eventos de actividad
 document.addEventListener("click", actualizarActividad, { passive: true });
 document.addEventListener("touchstart", actualizarActividad, { passive: true });
 document.addEventListener("keydown", actualizarActividad, { passive: true });
 
-// ===============================
-// 🚨 REGISTRAR SESIÓN EXPIRADA
-// ===============================
-async function registrarSesionExpirada(user){
-
-    if(!user){
-        return;
-    }
-
-    try{
-
-        await supabaseClient
-            .from("alerts")
-            .insert({
-
-                user_id:user.id,
-
-                email:user.email,
-
-                message:
-                    `⏳ Sesión expirada: ${user.email}`,
-
-                nivel:"warning",
-
-                visto:false
-            });
-
-        console.log(
-            "🚨 Sesión expirada registrada"
-        );
-
-    }catch(err){
-
-        console.error(
-            "❌ Error sesión expirada:",
-            err
-        );
-    }
-}
-
-// ===============================
-// 📱 FIX MOBILE PINCH
-// ===============================
-
-if("ongesturestart" in window){
-
-    document.addEventListener(
-        "gesturestart",
-        (e) => {
-
-            e.preventDefault();
-
-        },
-        { passive:false }
-    );
-}
-
-// ===============================
-// 🔐 VERIFICAR SESIÓN
-// ===============================
-
+// Verificación de sesión
 setInterval(async () => {
-<<<<<<< HEAD
     if (verificandoSesion) return;
-=======
-
-    if(verificandoSesion){
-        return;
-    }
-
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
     verificandoSesion = true;
 
     try {
         const ahora = Date.now();
-<<<<<<< HEAD
         if (ahora - lastActivity > TIEMPO_MAX) {
-            console.log("⏳ Sesión expirada");
+            console.log("⏳ Sesión expirada por inactividad");
             const { data: { user } } = await supabaseClient.auth.getUser();
             await registrarSesionExpirada(user);
             await supabaseClient.auth.signOut();
             showAlert("⏳ Sesión expirada por inactividad", "error");
-=======
-
-        if(
-            ahora - lastActivity >
-            TIEMPO_MAX
-        ){
-
-            console.log(
-                "⏳ Sesión expirada"
-            );
-
-            const {
-                data:{ user }
-            } = await supabaseClient
-                .auth
-                .getUser();
-
-            await registrarSesionExpirada(
-                user
-            );
-
-            await supabaseClient
-                .auth
-                .signOut();
-
-            showAlert(
-                "⏳ Sesión expirada por inactividad",
-                "error"
-            );
-
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
             setTimeout(() => {
                 window.location.href = "index.html";
             }, 1800);
@@ -883,186 +478,24 @@ setInterval(async () => {
     }
 }, 30000);
 
-
-// 🚫 BLOQUEOS
-<<<<<<< HEAD
+// 🚫 Bloqueos de seguridad
 document.addEventListener("contextmenu", e => e.preventDefault());
+
 document.addEventListener("keydown", e => {
-    if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
+    if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I") || (e.ctrlKey && e.key === "u")) {
         e.preventDefault();
-=======
-document.addEventListener(
-    "contextmenu",
-    e => e.preventDefault()
-);
-
-// 🚫 F12
-document.addEventListener(
-    "keydown",
-    e => {
-
-        if(
-            e.key === "F12" ||
-
-            (
-                e.ctrlKey &&
-                e.shiftKey &&
-                e.key === "I"
-            ) ||
-            
-            (
-                e.ctrlKey &&
-                e.key === "u"
-            )
-        ){
-            e.preventDefault();
-        }
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
     }
 });
 
-// ===============================
-// 🚀 INIT
-// ===============================
-document.addEventListener("DOMContentLoaded", async () => {
-    try {
-        const device_id = localStorage.getItem("device_id");
-        const { data: { session } } = await supabaseClient.auth.getSession();
-
-<<<<<<< HEAD
-        if (!session) {
-            showAlert("⏳ Sesión expirada", "error");
-            setTimeout(() => {
-                window.location.href = "index.html";
-            }, 1500);
-            return;
-=======
-        try{
-
-            const device_id =
-                localStorage.getItem(
-                    "device_id"
-                );
-
-            const {
-                data:{ session }
-            } = await supabaseClient
-                .auth
-                .getSession();
-
-            if(!session){
-
-                showAlert(
-                    "⏳ Sesión expirada",
-                    "error"
-                );
-
-                setTimeout(() => {
-
-                    window.location.href =
-                        "index.html";
-
-                }, 1500);
-
-                return;
-            }
-
-            const user =
-                session.user;
-
-            const expiresAt =
-                session.expires_at * 1000;
-
-            if(Date.now() > expiresAt){
-
-                await registrarSesionExpirada(
-                    user
-                );
-
-                await supabaseClient
-                    .auth
-                    .signOut();
-
-                showAlert(
-                    "⏳ Sesión expirada por inactividad",
-                    "error"
-                );
-
-                setTimeout(() => {
-
-                    window.location.href =
-                        "index.html";
-
-                }, 1500);
-
-                return;
-            }
-
-            if(!device_id){
-
-                console.warn(
-                    "⚠️ device_id no encontrado"
-                );
-            }
-
-            await loadConfig();
-            initPDFZoom();
-
-            // Escuchar cambios de tamaño de ventana
-            let resizeTimeout;
-            window.addEventListener('resize', function() {
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(function() {
-                    if (pdfDocument && !cargandoPDF) {
-                        console.log("🔄 Re-renderizando por cambio de tamaño");
-                        loadPDF();
-                    }
-                }, 300);
-            });
-
-        }catch(err){
-
-            console.error(
-                "❌ Error init:",
-                err
-            );
-
-            showAlert(
-                "❌ Error iniciando visor",
-                "error"
-            );
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
-        }
-
-        const user = session.user;
-        const expiresAt = session.expires_at * 1000;
-
-        if (Date.now() > expiresAt) {
-            await registrarSesionExpirada(user);
-            await supabaseClient.auth.signOut();
-            showAlert("⏳ Sesión expirada por inactividad", "error");
-            setTimeout(() => {
-                window.location.href = "index.html";
-            }, 1500);
-            return;
-        }
-
-        if (!device_id) {
-            console.warn("⚠️ device_id no encontrado");
-        }
-
-        await loadConfig();
-        initPDFZoom();
-    } catch (err) {
-        console.error("❌ Error init:", err);
-        showAlert("❌ Error iniciando visor", "error");
-    }
-});
-
-<<<<<<< HEAD
+// Prevenir zoom con gestos en iOS
+if ("ongesturestart" in window) {
+    document.addEventListener("gesturestart", (e) => {
+        e.preventDefault();
+    }, { passive: false });
+}
 
 // ===============================
-// 🔍 ZOOM PDF
+// 🔍 ZOOM PDF (VERSIÓN ÚNICA)
 // ===============================
 let initialDistance = null;
 let zoomTimeout = null;
@@ -1075,103 +508,6 @@ function initPDFZoom() {
     pdfContainer.addEventListener("touchmove", handlePinchZoom, { passive: false });
 }
 
-=======
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
-// ===============================
-// 🔍 ZOOM PDF
-// ===============================
-
-let initialDistance = null;
-let zoomTimeout = null;
-
-// ===============================
-// 🚀 INIT PDF EVENTS
-// ===============================
-function initPDFZoom(){
-
-    const pdfContainer =
-        document.getElementById(
-            "pdfContainer"
-        );
-
-    if(!pdfContainer){
-        return;
-    }
-
-    pdfContainer.addEventListener(
-        "wheel",
-        handleWheelZoom,
-        { passive:false }
-    );
-
-    pdfContainer.addEventListener(
-        "touchmove",
-        handlePinchZoom,
-        { passive:false }
-    );
-}
-
-// ===============================
-// 🖥️ WHEEL ZOOM
-// ===============================
-<<<<<<< HEAD
-async function handleWheelZoom(e) {
-    if (!e.ctrlKey) return;
-=======
-async function handleWheelZoom(e){
-
-    if(!e.ctrlKey){
-        return;
-    }
-
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
-    e.preventDefault();
-    if (zoomTimeout) return;
-
-<<<<<<< HEAD
-    if (e.deltaY < 0) {
-=======
-    if(zoomTimeout){
-        return;
-    }
-
-    if(e.deltaY < 0){
-
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
-        pdfScale += 0.1;
-    } else {
-        pdfScale -= 0.1;
-    }
-
-<<<<<<< HEAD
-    pdfScale = Math.min(Math.max(0.6, pdfScale), 3);
-
-    zoomTimeout = setTimeout(async () => {
-        await loadPDF();
-        zoomTimeout = null;
-    }, 120);
-=======
-    pdfScale =
-        Math.min(
-            Math.max(0.6, pdfScale),
-            3
-        );
-
-    zoomTimeout =
-        setTimeout(async () => {
-
-            await loadPDF();
-
-            zoomTimeout = null;
-
-        }, 120);
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
-}
-
-
-// ===============================
-// 📱 PINCH ZOOM
-// ===============================
 async function handleWheelZoom(e) {
     if (!e.ctrlKey) return;
     e.preventDefault();
@@ -1195,24 +531,9 @@ async function handlePinchZoom(e) {
     if (e.touches.length !== 2) return;
     e.preventDefault();
 
-<<<<<<< HEAD
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     const distance = Math.sqrt(dx * dx + dy * dy);
-=======
-    const dx =
-        e.touches[0].clientX -
-        e.touches[1].clientX;
-
-    const dy =
-        e.touches[0].clientY -
-        e.touches[1].clientY;
-
-    const distance =
-        Math.sqrt(dx * dx + dy * dy);
-
-    if(!initialDistance){
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
 
     if (!initialDistance) {
         initialDistance = distance;
@@ -1222,58 +543,72 @@ async function handlePinchZoom(e) {
     const diff = distance - initialDistance;
     if (Math.abs(diff) < 8) return;
 
-<<<<<<< HEAD
     pdfScale += diff * 0.0008;
     pdfScale = Math.min(Math.max(0.6, pdfScale), 3);
     initialDistance = distance;
 
     if (zoomTimeout) return;
+    
     zoomTimeout = setTimeout(async () => {
         await loadPDF();
         zoomTimeout = null;
     }, 150);
-=======
-    if(Math.abs(diff) < 8){
-        return;
-    }
-
-    pdfScale += diff * 0.0008;
-
-    pdfScale =
-        Math.min(
-            Math.max(0.6, pdfScale),
-            3
-        );
-
-    initialDistance = distance;
-
-    if(zoomTimeout){
-        return;
-    }
-
-    zoomTimeout =
-        setTimeout(async () => {
-
-            await loadPDF();
-
-            zoomTimeout = null;
-
-        }, 150);
->>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
 }
 
 document.addEventListener("touchend", () => {
     initialDistance = null;
 });
 
-
 // ===============================
-// 📱 TOUCH END
+// 🚀 INIT
 // ===============================
-document.addEventListener(
-    "touchend",
-    () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const device_id = localStorage.getItem("device_id");
+        const { data: { session } } = await supabaseClient.auth.getSession();
 
-        initialDistance = null;
+        if (!session) {
+            showAlert("⏳ Sesión expirada", "error");
+            setTimeout(() => {
+                window.location.href = "index.html";
+            }, 1500);
+            return;
+        }
+
+        const user = session.user;
+        const expiresAt = session.expires_at * 1000;
+
+        if (Date.now() > expiresAt) {
+            await registrarSesionExpirada(user);
+            await supabaseClient.auth.signOut();
+            showAlert("⏳ Sesión expirada", "error");
+            setTimeout(() => {
+                window.location.href = "index.html";
+            }, 1500);
+            return;
+        }
+
+        if (!device_id) {
+            console.warn("⚠️ device_id no encontrado");
+        }
+
+        await loadConfig();
+        initPDFZoom();
+
+        // Escuchar cambios de tamaño de ventana
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(function() {
+                if (pdfDocument && !cargandoPDF) {
+                    console.log("🔄 Re-renderizando por cambio de tamaño");
+                    loadPDF();
+                }
+            }, 300);
+        });
+
+    } catch (err) {
+        console.error("❌ Error init:", err);
+        showAlert("❌ Error iniciando visor", "error");
     }
-);
+});
