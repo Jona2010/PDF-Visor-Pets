@@ -14,6 +14,7 @@
 <!-- Preload de recursos críticos -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
 <link rel="preconnect" href="https://xnkpjgrxgwkfhgrrzwhu.supabase.co" />
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" />
 
 <link rel="stylesheet" href="styles_visor.css" />
 
@@ -246,27 +247,40 @@
     }
 </style>
 
-<!-- LIBRERÍAS con carga optimizada -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- ✅ LIBRERÍAS CORREGIDAS - VERSIONES ESTABLES Y COMPATIBLES -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js"></script>
 
-<!-- Configuración inicial de PDF.js -->
+<!-- ✅ Configuración MEJORADA de PDF.js (v4.2.67 estable) -->
 <script>
-    // Configuración temprana de PDF.js
-    (function initPdfWorker() {
+(function initPdfWorker() {
+    // Esperar a que PDF.js esté completamente cargado
+    function waitForPdfJs() {
         if (typeof pdfjsLib !== 'undefined') {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            console.log('✅ PDF.js inicializado correctamente');
-        } else {
-            console.error('❌ PDF.js no cargado, reintentando...');
-            setTimeout(function() {
-                if (typeof pdfjsLib !== 'undefined') {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                    console.log('✅ PDF.js inicializado (reintento)');
-                }
-            }, 500);
+            // Configuración oficial para v4.2.67
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js';
+            console.log('✅ PDF.js v4.2.67 inicializado correctamente');
+            return true;
         }
-    })();
+        return false;
+    }
+    
+    // Intentar inicialización inmediata
+    if (!waitForPdfJs()) {
+        // Reintentar cada 100ms máximo 50 veces (5 segundos)
+        let attempts = 0;
+        const maxAttempts = 50;
+        const interval = setInterval(() => {
+            attempts++;
+            if (waitForPdfJs() || attempts >= maxAttempts) {
+                clearInterval(interval);
+                if (attempts >= maxAttempts) {
+                    console.error('❌ PDF.js no se pudo inicializar después de 5s');
+                }
+            }
+        }, 100);
+    }
+})();
 </script>
 
 <!-- Script principal del visor -->
@@ -367,6 +381,18 @@
     if (typeof showAlert === 'undefined') {
         window.showAlert = window.showAlertFallback;
     }
+</script>
+
+<!-- 🧪 DIAGNÓSTICO AUTOMÁTICO (opcional - puedes removerlo después) -->
+<script>
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        console.log('🧪 DIAGNÓSTICO LIBRERÍAS:');
+        console.log('- PDF.js:', typeof pdfjsLib !== 'undefined' ? '✅ CARGADO v4.2.67' : '❌ NO CARGADO');
+        console.log('- Supabase:', typeof supabase !== 'undefined' ? '✅ CARGADO v2.38.4' : '❌ NO CARGADO');
+        console.log('- WorkerSrc:', pdfjsLib?.GlobalWorkerOptions?.workerSrc || '❌ NO CONFIGURADO');
+    }, 2000);
+});
 </script>
 
 </body>
