@@ -296,7 +296,9 @@ async function renderizarPagina(documentoPDF, numeroPagina, contenedor, token, e
         escala = escala * escalaActual;
         escala = Math.min(Math.max(escala, 0.4), 2.5);
         
-        const viewport = pagina.getViewport({ scale: escala });
+        const DPR = esMovil ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+
+        const viewport = pagina.getViewport({ scale: escala * DPR });
         
         // Crear canvas para renderizar
         const canvas = document.createElement("canvas");
@@ -414,14 +416,19 @@ async function cargarPDF() {
         const token = ++tokenRenderizado;
         
         // Configurar y cargar el PDF
-        tareaActual = pdfjsLib.getDocument({
+        const tareaActual = pdfjsLib.getDocument({
+
             url: urlData.signedUrl,
+
             verbosity: 0,
-            disableAutoFetch: false,
-            rangeChunkSize: 65536,
-            cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/",
-            cMapPacked: true,
-            stopAtErrors: true
+
+            disableStream: true,
+
+            disableAutoFetch: true,
+
+            disableRange: true,
+
+            stopAtErrors: false
         });
         
         const pdf = await tareaActual.promise;
@@ -496,12 +503,6 @@ async function cargarPDF() {
         }
         
         console.log(`✅ DOCUMENTO COMPLETO: ${totalPaginas} páginas renderizadas`);
-        
-        // Limpieza y registro
-        if (documentoPDF && token === tokenRenderizado) {
-            documentoPDF.destroy();
-            documentoPDF = null;
-        }
         
         tareaActual = null;
         cargando = false;
