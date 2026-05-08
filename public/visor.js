@@ -8,6 +8,11 @@ const supabaseClient = supabase.createClient(
 
 let config = null;
 let pdfScale = 1;
+<<<<<<< HEAD
+=======
+
+// 🔒 EVITAR MÚLTIPLES CARGAS PDF
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
 let renderToken = 0;
 let currentLoadingTask = null;
 let pdfDocument = null;
@@ -136,9 +141,14 @@ function updateAreas() {
     }
 }
 
+<<<<<<< HEAD
 
 // 📱 DETECTAR MÓVIL
 function esMovil() {
+=======
+// 📱 DETECTAR MÓVIL
+function esMovil(){
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
     return window.innerWidth <= 768;
 }
 
@@ -166,32 +176,79 @@ async function registrarSesionExpirada(user) {
     }
 }
 
+<<<<<<< HEAD
 
 // 📥 CARGAR PDF (FIX TOTAL - 52 PÁGINAS)
 async function loadPDF() {
     try {
         const container = document.getElementById("pdfContainer");
         const loader = document.getElementById("loader");
+=======
+// 📥 CARGAR PDF - VERSIÓN CORREGIDA CON GRID 2 COLUMNAS
+async function loadPDF(){
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
 
-        const petIndex = document.getElementById("petSelect").value;
-        const area = document.getElementById("areaSelect").value;
+    try{
 
+<<<<<<< HEAD
         if (!config.pets[petIndex] || !config.pets[petIndex].archivos[area]) {
+=======
+        const container =
+            document.getElementById(
+                "pdfContainer"
+            );
+
+        const loader =
+            document.getElementById(
+                "loader"
+            );
+
+        const petIndex =
+            document.getElementById(
+                "petSelect"
+            ).value;
+
+        const area =
+            document.getElementById(
+                "areaSelect"
+            ).value;
+
+        if(
+            !config.pets[petIndex] ||
+            !config.pets[petIndex]
+            .archivos[area]
+        ){
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
             return;
         }
 
-        const fileName = config.pets[petIndex].archivos[area];
+        const fileName =
+            config.pets[petIndex]
+            .archivos[area];
 
+        // 🚫 EVITAR DOBLE CARGA
+        cargandoPDF = true;
+
+        // 🧹 LIMPIAR
+        container.innerHTML = "";
+
+<<<<<<< HEAD
         // 🔥 UI LIMPIA
         container.classList.remove("loaded");
         container.innerHTML = "";
+=======
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
         loader.style.display = "flex";
         cargandoPDF = true;
 
-        // 🔐 SUPABASE URL
-        const { data, error } = await supabaseClient
+        // 🔐 URL
+        const {
+            data,
+            error
+        } = await supabaseClient
             .storage
             .from(config.bucket)
+<<<<<<< HEAD
             .createSignedUrl(fileName, 3600);
 
         if (error) {
@@ -315,10 +372,222 @@ async function loadPDF() {
 // 🎯 FUNCIÓN RENDER PÁGINA INDIVIDUAL (OPTIMIZADA)
 async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
     if (token !== renderToken || !pdf) return null;
+=======
+            .createSignedUrl(
+                fileName,
+                3600
+            );
+
+        if(error){
+
+            loader.style.display =
+                "none";
+
+            cargandoPDF = false;
+
+            showAlert(
+                "❌ Error cargando PDF",
+                "error"
+            );
+
+            return;
+        }
+
+        // 🚀 CANCELAR ANTERIOR
+        if(currentLoadingTask){
+
+            try{
+                currentLoadingTask.destroy();
+            }catch(e){}
+        }
+
+        const token =
+            ++renderToken;
+
+        // 📄 PDF
+        currentLoadingTask =
+            pdfjsLib.getDocument({
+
+                url:data.signedUrl,
+
+                verbosity:0,
+
+                disableAutoFetch:false,
+
+                rangeChunkSize:65536,
+
+                cMapUrl:
+                    "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/",
+
+                cMapPacked:true
+            });
+
+        const pdf =
+            await currentLoadingTask.promise;
+
+        pdfDocument = pdf;
+
+        if(token !== renderToken){
+            return;
+        }
+
+        const totalPages =
+            pdf.numPages;
+
+        const modoMovil =
+            esMovil();
+
+        // =========================
+        // 🎨 GRID LAYOUT
+        // =========================
+
+        if (modoMovil) {
+
+            container.style.display = "flex";
+            container.style.flexDirection = "column";
+            container.style.alignItems = "center";
+            container.style.gap = "20px";
+
+        } else {
+
+            // ✅ GRID 2 COLUMNAS REAL
+            container.style.display = "grid";
+
+            container.style.gridTemplateColumns =
+                "repeat(2, minmax(420px, 1fr))";
+
+            container.style.justifyContent =
+                "center";
+
+            container.style.alignItems =
+                "start";
+
+            container.style.gap =
+                "24px";
+
+            container.style.padding =
+                "20px";
+
+            container.style.maxWidth =
+                "1600px";
+
+            container.style.margin =
+                "0 auto";
+        }
+
+        // =========================
+        // 📄 RENDER
+        // =========================
+
+        for(
+            let i = 1;
+            i <= totalPages;
+            i++
+        ){
+
+            if(token !== renderToken){
+                return;
+            }
+
+            const pageWrapper =
+                document.createElement(
+                    "div"
+                );
+
+            pageWrapper.className =
+                "page-wrapper";
+
+            // 🔥 CONFIGURAR WRAPPER
+            if(modoMovil){
+
+                pageWrapper.style.width =
+                    "100%";
+
+                pageWrapper.style.maxWidth =
+                    "500px";
+
+                pageWrapper.style.display =
+                    "flex";
+
+                pageWrapper.style.justifyContent =
+                    "center";
+
+                pageWrapper.style.alignItems =
+                    "flex-start";
+
+            }else{
+
+                // ✅ 2 COLUMNAS REALES
+                pageWrapper.style.width =
+                    "100%";
+
+                // 🔥 TAMAÑO CONTROLADO
+                pageWrapper.style.maxWidth =
+                    "700px";
+
+                pageWrapper.style.display =
+                    "flex";
+
+                pageWrapper.style.justifyContent =
+                    "center";
+
+                pageWrapper.style.alignItems =
+                    "flex-start";
+            }
+
+            container.appendChild(
+                pageWrapper
+            );
+
+            await renderPagina(
+                pdf,
+                i,
+                pageWrapper,
+                token,
+                modoMovil
+            );
+        }
+
+        loader.style.display =
+            "none";
+
+        cargandoPDF = false;
+
+        console.log(
+            `✅ PDF COMPLETO ${totalPages} páginas`
+        );
+
+    }catch(err){
+
+        console.error(
+            "❌ Error loadPDF:",
+            err
+        );
+
+        cargandoPDF = false;
+
+        currentLoadingTask = null;
+
+        document.getElementById(
+            "loader"
+        ).style.display = "none";
+
+        showAlert(
+            `❌ Error PDF: ${err.message}`,
+            "error"
+        );
+    }
+}
+
+// 🎯 FUNCIÓN PARA RENDERIZAR CADA PÁGINA (OPTIMIZADA)
+async function renderPagina(pdf, pageNum, containerElement, token, modoMovil) {
+    if (token !== renderToken) return null;
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
 
     try {
         const page = await pdf.getPage(pageNum);
         
+<<<<<<< HEAD
         const containerWidth = container.clientWidth || window.innerWidth - 40;
         const baseViewport = page.getViewport({ scale: 1 });
         
@@ -333,10 +602,43 @@ async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
         
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d", { alpha: false }); // ✅ alpha: false mejora rendimiento
+=======
+        // 🔥 Calcular escala según dispositivo
+        let scale;
         
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
+        if (modoMovil) {
+            // Móvil: escala basada en ancho de pantalla
+            const containerWidth = Math.min(window.innerWidth - 40, 500);
+            const baseViewport = page.getViewport({ scale: 1 });
+            scale = (containerWidth * 0.95) / baseViewport.width;
+            scale = Math.min(Math.max(scale, 0.5), 2);
+        } else {
+            // Escritorio: calcular ancho disponible por columna
+            const gridContainer = document.getElementById("pdfContainer");
+            let availableWidth = 450; // Valor por defecto
+            
+            if (gridContainer) {
+                const gridWidth = gridContainer.clientWidth;
+                // Calcular ancho por columna considerando gap de 24px y padding
+                availableWidth = (gridWidth - 48) / 2;
+            }
+            
+            const baseViewport = page.getViewport({ scale: 1 });
+            scale = (availableWidth * 0.72) / baseViewport.width;
+            scale = Math.min(Math.max(scale, 0.5), 1.3);
+        }
         
+        const viewport = page.getViewport({ scale: scale });
+        
+        // Crear canvas
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d", { alpha: false });
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
+        
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+<<<<<<< HEAD
         canvas.style.width = `${Math.floor(viewport.width / devicePixelRatio)}px`;
         canvas.style.height = `${Math.floor(viewport.height / devicePixelRatio)}px`;
         canvas.style.opacity = "0";
@@ -362,10 +664,29 @@ async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
             canvasContext: ctx,
             viewport: viewport,
             background: "white" // ✅ Fondo blanco mejora rendimiento
-        });
-
-        await renderTask.promise;
+=======
+        // Estilos CSS
+        canvas.style.display = 'block';
+        canvas.style.width = modoMovil ? '100%' : '95%';
+        canvas.style.height = 'auto';
+        canvas.style.maxWidth = '100%';
+        canvas.style.backgroundColor = 'white';
+        canvas.style.borderRadius = '8px';
+        canvas.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
         
+        // Limpiar contenedor y añadir canvas
+        containerElement.innerHTML = "";
+        containerElement.appendChild(canvas);
+        
+        // Renderizar
+        const renderTask = page.render({
+            canvasContext: ctx,
+            viewport: viewport,
+            background: 'white'
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
+        });
+        
+<<<<<<< HEAD
         // ✅ Limpiar página después de renderizar
         page.cleanup();
         
@@ -375,6 +696,11 @@ async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
             });
         }
 
+=======
+        await renderTask.promise;
+        page.cleanup();
+        
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
         return pageNum;
         
     } catch (err) {
@@ -433,9 +759,6 @@ document.addEventListener("click", actualizarActividad, { passive: true });
 document.addEventListener("touchstart", actualizarActividad, { passive: true });
 document.addEventListener("keydown", actualizarActividad, { passive: true });
 
-// 🚫 NO USAR SCROLL GLOBAL
-// document.addEventListener("scroll", actualizarActividad);
-
 // ===============================
 // 🚨 REGISTRAR SESIÓN EXPIRADA
 // ===============================
@@ -476,12 +799,10 @@ async function registrarSesionExpirada(user){
     }
 }
 
-
 // ===============================
 // 📱 FIX MOBILE PINCH
 // ===============================
 
-// 🚫 SOLO SAFARI/iOS
 if("ongesturestart" in window){
 
     document.addEventListener(
@@ -500,17 +821,57 @@ if("ongesturestart" in window){
 // ===============================
 
 setInterval(async () => {
+<<<<<<< HEAD
     if (verificandoSesion) return;
+=======
+
+    if(verificandoSesion){
+        return;
+    }
+
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
     verificandoSesion = true;
 
     try {
         const ahora = Date.now();
+<<<<<<< HEAD
         if (ahora - lastActivity > TIEMPO_MAX) {
             console.log("⏳ Sesión expirada");
             const { data: { user } } = await supabaseClient.auth.getUser();
             await registrarSesionExpirada(user);
             await supabaseClient.auth.signOut();
             showAlert("⏳ Sesión expirada por inactividad", "error");
+=======
+
+        if(
+            ahora - lastActivity >
+            TIEMPO_MAX
+        ){
+
+            console.log(
+                "⏳ Sesión expirada"
+            );
+
+            const {
+                data:{ user }
+            } = await supabaseClient
+                .auth
+                .getUser();
+
+            await registrarSesionExpirada(
+                user
+            );
+
+            await supabaseClient
+                .auth
+                .signOut();
+
+            showAlert(
+                "⏳ Sesión expirada por inactividad",
+                "error"
+            );
+
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
             setTimeout(() => {
                 window.location.href = "index.html";
             }, 1800);
@@ -524,10 +885,39 @@ setInterval(async () => {
 
 
 // 🚫 BLOQUEOS
+<<<<<<< HEAD
 document.addEventListener("contextmenu", e => e.preventDefault());
 document.addEventListener("keydown", e => {
     if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
         e.preventDefault();
+=======
+document.addEventListener(
+    "contextmenu",
+    e => e.preventDefault()
+);
+
+// 🚫 F12
+document.addEventListener(
+    "keydown",
+    e => {
+
+        if(
+            e.key === "F12" ||
+
+            (
+                e.ctrlKey &&
+                e.shiftKey &&
+                e.key === "I"
+            ) ||
+            
+            (
+                e.ctrlKey &&
+                e.key === "u"
+            )
+        ){
+            e.preventDefault();
+        }
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
     }
 });
 
@@ -539,12 +929,109 @@ document.addEventListener("DOMContentLoaded", async () => {
         const device_id = localStorage.getItem("device_id");
         const { data: { session } } = await supabaseClient.auth.getSession();
 
+<<<<<<< HEAD
         if (!session) {
             showAlert("⏳ Sesión expirada", "error");
             setTimeout(() => {
                 window.location.href = "index.html";
             }, 1500);
             return;
+=======
+        try{
+
+            const device_id =
+                localStorage.getItem(
+                    "device_id"
+                );
+
+            const {
+                data:{ session }
+            } = await supabaseClient
+                .auth
+                .getSession();
+
+            if(!session){
+
+                showAlert(
+                    "⏳ Sesión expirada",
+                    "error"
+                );
+
+                setTimeout(() => {
+
+                    window.location.href =
+                        "index.html";
+
+                }, 1500);
+
+                return;
+            }
+
+            const user =
+                session.user;
+
+            const expiresAt =
+                session.expires_at * 1000;
+
+            if(Date.now() > expiresAt){
+
+                await registrarSesionExpirada(
+                    user
+                );
+
+                await supabaseClient
+                    .auth
+                    .signOut();
+
+                showAlert(
+                    "⏳ Sesión expirada por inactividad",
+                    "error"
+                );
+
+                setTimeout(() => {
+
+                    window.location.href =
+                        "index.html";
+
+                }, 1500);
+
+                return;
+            }
+
+            if(!device_id){
+
+                console.warn(
+                    "⚠️ device_id no encontrado"
+                );
+            }
+
+            await loadConfig();
+            initPDFZoom();
+
+            // Escuchar cambios de tamaño de ventana
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    if (pdfDocument && !cargandoPDF) {
+                        console.log("🔄 Re-renderizando por cambio de tamaño");
+                        loadPDF();
+                    }
+                }, 300);
+            });
+
+        }catch(err){
+
+            console.error(
+                "❌ Error init:",
+                err
+            );
+
+            showAlert(
+                "❌ Error iniciando visor",
+                "error"
+            );
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
         }
 
         const user = session.user;
@@ -572,6 +1059,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
+<<<<<<< HEAD
 
 // ===============================
 // 🔍 ZOOM PDF
@@ -587,12 +1075,13 @@ function initPDFZoom() {
     pdfContainer.addEventListener("touchmove", handlePinchZoom, { passive: false });
 }
 
+=======
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
 // ===============================
 // 🔍 ZOOM PDF
 // ===============================
 
 let initialDistance = null;
-
 let zoomTimeout = null;
 
 // ===============================
@@ -609,18 +1098,12 @@ function initPDFZoom(){
         return;
     }
 
-    // ===============================
-    // 🖥️ ZOOM RUEDA
-    // ===============================
     pdfContainer.addEventListener(
         "wheel",
         handleWheelZoom,
         { passive:false }
     );
 
-    // ===============================
-    // 📱 PINCH
-    // ===============================
     pdfContainer.addEventListener(
         "touchmove",
         handlePinchZoom,
@@ -631,23 +1114,58 @@ function initPDFZoom(){
 // ===============================
 // 🖥️ WHEEL ZOOM
 // ===============================
+<<<<<<< HEAD
 async function handleWheelZoom(e) {
     if (!e.ctrlKey) return;
+=======
+async function handleWheelZoom(e){
+
+    if(!e.ctrlKey){
+        return;
+    }
+
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
     e.preventDefault();
     if (zoomTimeout) return;
 
+<<<<<<< HEAD
     if (e.deltaY < 0) {
+=======
+    if(zoomTimeout){
+        return;
+    }
+
+    if(e.deltaY < 0){
+
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
         pdfScale += 0.1;
     } else {
         pdfScale -= 0.1;
     }
 
+<<<<<<< HEAD
     pdfScale = Math.min(Math.max(0.6, pdfScale), 3);
 
     zoomTimeout = setTimeout(async () => {
         await loadPDF();
         zoomTimeout = null;
     }, 120);
+=======
+    pdfScale =
+        Math.min(
+            Math.max(0.6, pdfScale),
+            3
+        );
+
+    zoomTimeout =
+        setTimeout(async () => {
+
+            await loadPDF();
+
+            zoomTimeout = null;
+
+        }, 120);
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
 }
 
 
@@ -677,9 +1195,24 @@ async function handlePinchZoom(e) {
     if (e.touches.length !== 2) return;
     e.preventDefault();
 
+<<<<<<< HEAD
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
     const distance = Math.sqrt(dx * dx + dy * dy);
+=======
+    const dx =
+        e.touches[0].clientX -
+        e.touches[1].clientX;
+
+    const dy =
+        e.touches[0].clientY -
+        e.touches[1].clientY;
+
+    const distance =
+        Math.sqrt(dx * dx + dy * dy);
+
+    if(!initialDistance){
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
 
     if (!initialDistance) {
         initialDistance = distance;
@@ -689,6 +1222,7 @@ async function handlePinchZoom(e) {
     const diff = distance - initialDistance;
     if (Math.abs(diff) < 8) return;
 
+<<<<<<< HEAD
     pdfScale += diff * 0.0008;
     pdfScale = Math.min(Math.max(0.6, pdfScale), 3);
     initialDistance = distance;
@@ -698,6 +1232,34 @@ async function handlePinchZoom(e) {
         await loadPDF();
         zoomTimeout = null;
     }, 150);
+=======
+    if(Math.abs(diff) < 8){
+        return;
+    }
+
+    pdfScale += diff * 0.0008;
+
+    pdfScale =
+        Math.min(
+            Math.max(0.6, pdfScale),
+            3
+        );
+
+    initialDistance = distance;
+
+    if(zoomTimeout){
+        return;
+    }
+
+    zoomTimeout =
+        setTimeout(async () => {
+
+            await loadPDF();
+
+            zoomTimeout = null;
+
+        }, 150);
+>>>>>>> 6242df85505e6d5a95a3fcdcb1d3b6a32306c111
 }
 
 document.addEventListener("touchend", () => {
