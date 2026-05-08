@@ -5,260 +5,148 @@
     height: 100dvh;
     display: flex;
     flex-direction: column;
-
     background: #020617;
     color: white;
-
-    font-family:
-        'Segoe UI',
-        system-ui,
-        sans-serif;
-
+    font-family: 'Segoe UI', system-ui, sans-serif;
     overflow: hidden;
 }
 
 /* =========================
    🔥 ALERTAS PRO
 ========================= */
-
-.custom-alert{
-
+.custom-alert {
     position: fixed;
-
     top: 20px;
     left: 50%;
-
-    transform:
-        translateX(-50%)
-        translateY(-20px);
-
+    transform: translateX(-50%) translateY(-20px);
     background: #ef4444;
     color: white;
-
     padding: 14px 22px;
-
     border-radius: 12px;
-
     font-weight: 600;
     font-size: 14px;
-
     text-align: center;
-
-    box-shadow:
-        0 10px 25px rgba(0,0,0,.4);
-
+    box-shadow: 0 10px 25px rgba(0,0,0,.4);
     opacity: 0;
-
-    transition:
-        opacity .3s ease,
-        transform .3s ease;
-
+    transition: opacity .3s ease, transform .3s ease;
     z-index: 9999;
-
     pointer-events: none;
-
     max-width: calc(100vw - 40px);
-
     word-break: break-word;
-
-    will-change: transform, opacity;
 }
 
-.custom-alert.show{
-
+.custom-alert.show {
     opacity: 1;
-
-    transform:
-        translateX(-50%)
-        translateY(0);
+    transform: translateX(-50%) translateY(0);
 }
 
 /* =========================
    HEADER PREMIUM
 ========================= */
-
 .header {
-
     flex: none;
-
     display: grid;
-
     grid-template-columns: auto 1fr auto;
-
     align-items: center;
-
     gap: 16px;
-
     padding: 14px 24px;
-
     background: rgba(2,6,23,.92);
-
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-
     border-bottom: 1px solid #1e293b;
-
     position: sticky;
-
     top: 0;
-
     z-index: 1000;
-
     width: 100%;
-
     box-sizing: border-box;
-
-    overflow: hidden;
 }
 
-/* LOGO */
 .logo span {
-
     font-weight: 700;
     font-size: 16px;
-
     color: #22c55e;
-
     letter-spacing: 1px;
 }
 
 .logo small {
-
     display: block;
-
     font-size: 11px;
-
     color: #94a3b8;
 }
 
-/* CONTROLES */
 .controls-bar {
-
     display: flex;
-
     justify-content: center;
-
     gap: 12px;
 }
 
-/* SELECTS */
 .controls-bar select {
-
     background: #020617;
-
     border: 1px solid #1e293b;
-
     padding: 8px 14px;
-
     border-radius: 8px;
-
     color: white;
-
     min-width: 220px;
-
-    transition:
-        border-color .2s ease,
-        background .2s ease;
+    transition: border-color .2s ease;
 }
 
 .controls-bar select:hover {
-
     border-color: #22c55e;
 }
 
-/* BOTÓN */
 .actions {
-
     display: flex;
-
     justify-content: flex-end;
 }
 
 .btn-logout {
-
     background: #ef4444;
-
     border: none;
-
     padding: 8px 16px;
-
     border-radius: 8px;
-
     color: white;
-
     cursor: pointer;
-
     font-weight: 500;
-
-    transition:
-        background .2s ease,
-        transform .2s ease;
+    transition: background .2s ease;
 }
 
 .btn-logout:hover {
-
     background: #dc2626;
-
-    transform: translateY(-1px);
 }
 
 /* =========================
    VISOR
 ========================= */
-
 .viewer {
-
-    flex:1;
-
-    position:relative;
-
-    overflow:hidden;
-}
-
-/* CONTENEDOR PDF */
-.pdf-view{
-
-    position:absolute;
-
-    inset:0;
-
-    overflow:auto;
-
-    -webkit-overflow-scrolling:touch;
-
-    padding:20px;
-
-    touch-action:pan-x pan-y;
-
-    background:#111827;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
 }
 
 /* ==========================================
-🖥️ ESCRITORIO: 2 COLUMNAS PARA PDF (DEFAULT)
-========================================== */
-
-/* Contenedor principal del PDF */
+   🖥️ ESCRITORIO: GRID DE 2 COLUMNAS (CORREGIDO)
+   ========================================== */
 .pdf-view {
-    display: block !important;
+    position: absolute;
+    inset: 0;
+    overflow: auto;
+    padding: 20px;
+    background: #111827;
 }
 
-/* Las filas que agrupan las páginas de a pares */
-.pdf-view > div {
+/* IMPORTANTE: Grid de 2 columnas directo en el contenedor */
+.pdf-view {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 30px !important;
-    justify-content: center !important;
     align-items: start !important;
-    width: 100% !important;
-    max-width: 1600px !important;
-    margin: 0 auto 40px auto !important;
-    background: transparent !important;
+    justify-items: center !important;
 }
 
-/* Cada página individual */
+/* Cada página individual - ya no necesita divs internos */
 .page-wrapper {
     display: flex !important;
     justify-content: center !important;
+    align-items: center !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -273,57 +161,36 @@
     background: white;
     border-radius: 10px;
     box-shadow: 0 10px 30px rgba(0,0,0,.45);
-    image-rendering: high-quality;
-    image-rendering: -webkit-optimize-contrast;
-    backface-visibility: hidden;
-    transform: translateZ(0);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Hover efecto */
 .pdf-view canvas:hover {
     transform: scale(1.01);
-    transition: transform 0.2s ease;
     box-shadow: 0 15px 35px rgba(0,0,0,.5);
 }
 
 /* ==========================================
-📱 MÓVIL: 1 COLUMNA
-========================================== */
-
+   📱 MÓVIL: 1 COLUMNA
+   ========================================== */
 @media (max-width: 768px) {
-    /* Contenedor */
     .pdf-view {
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
+        gap: 20px !important;
         padding: 12px !important;
     }
     
-    /* Filas - una por página */
-    .pdf-view > div {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        gap: 20px !important;
-        width: 100% !important;
-        margin: 0 0 20px 0 !important;
-    }
-    
-    /* Wrapper de página */
     .page-wrapper {
         width: 100% !important;
         display: flex !important;
         justify-content: center !important;
-        margin-bottom: 0 !important;
     }
     
-    /* Canvas */
     .pdf-view canvas {
         width: 95% !important;
-        height: auto !important;
         max-width: 95% !important;
         border-radius: 8px;
-        box-shadow: 0 8px 18px rgba(0,0,0,.45);
     }
     
     .pdf-view canvas:hover {
@@ -332,285 +199,135 @@
 }
 
 /* ==========================================
-📲 EXTRA PEQUEÑOS (420px o menos)
-========================================== */
-
-@media (max-width:420px){
-    .header{
-        padding:10px;
-        gap:8px;
+   📲 EXTRA PEQUEÑOS (420px o menos)
+   ========================================== */
+@media (max-width: 420px) {
+    .header {
+        padding: 10px;
+        gap: 8px;
     }
-
-    .logo span{
-        font-size:18px;
-        line-height:1.1;
+    
+    .logo span {
+        font-size: 18px;
     }
-
-    .logo small{
-        font-size:11px;
+    
+    .logo small {
+        font-size: 11px;
     }
-
-    .controls-bar{
-        gap:8px;
-    }
-
+    
     .controls-bar select,
-    .btn-logout{
-        height:44px;
-        font-size:14px;
+    .btn-logout {
+        height: 44px;
+        font-size: 14px;
     }
-
-    .pdf-view{
-        padding:10px 6px 25px;
+    
+    .pdf-view {
+        padding: 10px;
+        gap: 15px;
     }
-
-    .pdf-view > div{
-        gap:14px;
-        margin-bottom: 14px;
+    
+    .pdf-view canvas {
+        border-radius: 6px;
     }
+}
 
-    .pdf-view canvas{
-        border-radius:6px;
+/* ==========================================
+   TABLETS (769px - 1024px)
+   ========================================== */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .pdf-view {
+        gap: 20px !important;
+    }
+    
+    .pdf-view canvas {
+        border-radius: 8px;
+    }
+}
+
+/* ==========================================
+   PANTALLAS GRANDES (4K)
+   ========================================== */
+@media (min-width: 1920px) {
+    .pdf-view {
+        gap: 40px !important;
+        padding: 30px !important;
+    }
+    
+    .pdf-view canvas {
+        border-radius: 12px;
     }
 }
 
 /* =========================
    LOADER PREMIUM
 ========================= */
-
 .loader {
-
-    position:absolute;
-
-    inset:0;
-
-    background:rgba(0,0,0,.85);
-
-    backdrop-filter:blur(3px);
-    -webkit-backdrop-filter:blur(3px);
-
-    display:none;
-
-    justify-content:center;
-    align-items:center;
-    flex-direction:column;
-
-    z-index:999;
-
-    opacity:0;
-
-    transition:opacity .25s ease;
-
-    pointer-events:none;
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.85);
+    backdrop-filter: blur(3px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 999;
+    opacity: 0;
+    transition: opacity .25s ease;
+    pointer-events: none;
 }
 
 .loader.active {
-
-    display:flex;
-
-    opacity:1;
-
-    pointer-events:auto;
+    display: flex;
+    opacity: 1;
+    pointer-events: auto;
 }
 
-/* SPINNER */
 .spinner {
-
-    width:55px;
-    height:55px;
-
-    border:4px solid rgba(255,255,255,.1);
-
-    border-top:4px solid #22c55e;
-
-    border-radius:50%;
-
-    animation:spin .8s linear infinite;
-
-    will-change:transform;
-
-    transform:translateZ(0);
-
-    backface-visibility:hidden;
+    width: 55px;
+    height: 55px;
+    border: 4px solid rgba(255,255,255,.1);
+    border-top: 4px solid #22c55e;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
 }
 
 @keyframes spin {
-
-    100%{
-        transform:rotate(360deg);
-    }
+    100% { transform: rotate(360deg); }
 }
 
 .loader p {
-
-    margin-top:12px;
-
-    color:#22c55e;
-
-    font-size:14px;
-
-    text-align:center;
+    margin-top: 12px;
+    color: #22c55e;
+    font-size: 14px;
 }
 
 /* =========================
-   SCROLL PRO
+   SCROLL PERSONALIZADO
 ========================= */
-
-*{
-    scrollbar-width:thin;
-    scrollbar-color:#1e293b transparent;
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #1e293b transparent;
 }
 
-::-webkit-scrollbar{
-    width:8px;
-    height:8px;
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
     background: transparent;
 }
 
-::-webkit-scrollbar-thumb{
-
-    background:#1e293b;
-
-    border-radius:4px;
+::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover{
-
-    background:#334155;
+::-webkit-scrollbar-thumb:hover {
+    background: #334155;
 }
 
-/* ==========================================
-🚫 BLOQUEAR ZOOM NATIVO DEL NAVEGADOR
-========================================== */
-
-html,
-body{
-
-    margin:0;
-    padding:0;
-
-    width:100%;
-    height:100%;
-
-    overflow:hidden;
-
-    background:#020617;
-
-    overscroll-behavior:none;
-
-    -webkit-user-select:none;
-    user-select:none;
-
-    -webkit-touch-callout:none;
-}
-
-/* APP */
-.app{
-
-    position:fixed;
-    inset:0;
-
-    display:flex;
-    flex-direction:column;
-
-    overflow:hidden;
-
-    background:#020617;
-}
-
-/* VISOR */
-.viewer{
-
-    flex:1;
-
-    overflow:hidden;
-
-    position:relative;
-}
-
-/* HEADER AJUSTES MÓVIL */
-@media (max-width:768px){
-    /* APP */
-    .app{
-        height:100dvh;
-        overflow:hidden;
-    }
-
-    /* HEADER */
-    .header{
-        display:flex;
-        flex-direction:column;
-        gap:10px;
-        padding:12px 14px;
-        flex:none;
-    }
-
-    .logo{
-        text-align:center;
-    }
-
-    .logo span{
-        font-size:20px;
-    }
-
-    .logo small{
-        font-size:12px;
-    }
-
-    /* CONTROLES */
-    .controls-bar{
-        width:100%;
-        display:flex;
-        flex-direction:column;
-        gap:10px;
-    }
-
-    .controls-bar select{
-        width:100%;
-        min-width:unset;
-        height:46px;
-        font-size:15px;
-    }
-
-    /* BOTÓN */
-    .actions{
-        width:100%;
-    }
-
-    .btn-logout{
-        width:100%;
-        height:46px;
-        font-size:15px;
-    }
-
-    /* VIEWER */
-    .viewer{
-        flex:1;
-        min-height:0;
-        overflow:hidden;
-    }
-
-    /* LOADER */
-    .loader p{
-        font-size:13px;
-        text-align:center;
-        padding:0 20px;
-    }
-}
-
-/* ==========================================
-🎨 MEJORAS VISUALES ADICIONALES
-========================================== */
-
-/* Transición suave para todas las páginas */
-.page-wrapper {
-    transition: all 0.2s ease;
-}
-
-/* Mejor contraste para el scroll */
+/* Scroll específico del visor */
 .pdf-view::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -630,31 +347,89 @@ body{
     background: #16a34a;
 }
 
-/* Sombra especial para la primera página */
-.pdf-view > div:first-child .page-wrapper:first-child canvas {
-    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+/* ==========================================
+   🚫 BLOQUEAR ZOOM NATIVO DEL NAVEGADOR
+   ========================================== */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #020617;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
 }
 
-/* Responsive para tablets (768px a 1024px) */
-@media (min-width: 769px) and (max-width: 1024px) {
-    .pdf-view > div {
-        gap: 20px !important;
-        max-width: 1200px !important;
-    }
-    
-    .pdf-view canvas {
-        border-radius: 8px;
-    }
+.app {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #020617;
 }
 
-/* Para pantallas muy grandes (4K) */
-@media (min-width: 1920px) {
-    .pdf-view > div {
-        max-width: 1800px !important;
-        gap: 40px !important;
+.viewer {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+/* ==========================================
+   📱 HEADER AJUSTES MÓVIL
+   ========================================== */
+@media (max-width: 768px) {
+    .app {
+        height: 100dvh;
     }
     
-    .pdf-view canvas {
-        border-radius: 12px;
+    .header {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 14px;
+    }
+    
+    .logo {
+        text-align: center;
+    }
+    
+    .logo span {
+        font-size: 20px;
+    }
+    
+    .logo small {
+        font-size: 12px;
+    }
+    
+    .controls-bar {
+        width: 100%;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .controls-bar select {
+        width: 100%;
+        min-width: unset;
+        height: 46px;
+        font-size: 15px;
+    }
+    
+    .actions {
+        width: 100%;
+    }
+    
+    .btn-logout {
+        width: 100%;
+        height: 46px;
+        font-size: 15px;
+    }
+    
+    .loader p {
+        font-size: 13px;
+        padding: 0 20px;
     }
 }

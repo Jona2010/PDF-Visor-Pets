@@ -285,7 +285,6 @@ function updateAreas(){
 
 // 📱 DETECTAR MÓVIL
 function esMovil(){
-
     return window.innerWidth <= 768;
 }
 
@@ -343,7 +342,7 @@ async function registrarSesionExpirada(user){
     }
 }
 
-// 📥 CARGAR PDF COMPLETO (2 PÁGINAS POR FILA EN ESCRITORIO)
+// 📥 CARGAR PDF (VERSIÓN SIMPLIFICADA PARA 2 COLUMNAS)
 async function loadPDF() {
     try {
         const container = document.getElementById("pdfContainer");
@@ -360,7 +359,6 @@ async function loadPDF() {
         const fileName = config.pets[petIndex].archivos[area];
 
         // 🔥 UI LIMPIA
-        container.classList.remove("loaded");
         container.innerHTML = "";
         loader.style.display = "flex";
 
@@ -413,68 +411,46 @@ async function loadPDF() {
         const totalPages = pdf.numPages;
         const modoMovil = esMovil();
         
+        console.log(`📄 Renderizando ${totalPages} páginas en ${modoMovil ? '1 columna' : '2 columnas'}`);
+        
+        // NO aplicar estilos inline - dejar que el CSS maneje el grid
+        // Solo aseguramos que el contenedor tenga la clase correcta
+        container.classList.remove('modo-movil', 'modo-escritorio');
+        
         if (modoMovil) {
-            // 📱 MÓVIL: 1 página por fila
-            console.log(`📄 MÓVIL - Renderizando ${totalPages} páginas...`);
-            
-            for (let i = 1; i <= totalPages; i++) {
-                if (token !== renderToken) break;
-                
-                await renderSinglePageMovil(pdf, i, container, token);
-                
-                if (i % 5 === 0) {
-                    await new Promise(resolve => setTimeout(resolve, 10));
-                    console.log(`📄 Progreso móvil: ${i}/${totalPages}`);
-                }
-            }
+            container.classList.add('modo-movil');
         } else {
-            // 🖥️ ESCRITORIO: 2 páginas por fila (CORREGIDO)
-            console.log(`📄 ESCRITORIO - Renderizando ${totalPages} páginas en 2 columnas...`);
-            
-            // Crear un contenedor con CSS Grid para las filas
-            container.style.display = 'grid';
-            container.style.gridTemplateColumns = 'repeat(2, 1fr)';
-            container.style.gap = '30px';
-            container.style.alignItems = 'start';
-            container.style.justifyContent = 'center';
-            container.style.maxWidth = '1600px';
-            container.style.margin = '0 auto';
-            container.style.padding = '20px';
-            
-            // Array para almacenar las promesas de renderizado
-            const renderPromises = [];
-            
-            // Renderizar todas las páginas en orden
-            for (let i = 1; i <= totalPages; i++) {
-                if (token !== renderToken) break;
-                
-                // Crear wrapper para cada página individual
-                const pageWrapper = document.createElement("div");
-                pageWrapper.className = "page-wrapper";
-                pageWrapper.style.display = "flex";
-                pageWrapper.style.justifyContent = "center";
-                pageWrapper.style.alignItems = "center";
-                pageWrapper.style.width = "100%";
-                
-                // Añadir al contenedor
-                container.appendChild(pageWrapper);
-                
-                // Renderizar la página
-                const renderPromise = renderSinglePageEscritorio(pdf, i, pageWrapper, token);
-                renderPromises.push(renderPromise);
-                
-                // Log de progreso
-                if (i % 10 === 0) {
-                    console.log(`📄 Progreso: ${i}/${totalPages} páginas renderizadas`);
-                    await new Promise(resolve => setTimeout(resolve, 10));
-                }
-            }
-            
-            // Esperar a que todas las páginas se rendericen
-            await Promise.all(renderPromises);
-            console.log(`✅ Renderizado completado: ${totalPages} páginas en grid de 2 columnas`);
+            container.classList.add('modo-escritorio');
         }
-
+        
+        // Array para almacenar las promesas de renderizado
+        const renderPromises = [];
+        
+        // Renderizar todas las páginas
+        for (let i = 1; i <= totalPages; i++) {
+            if (token !== renderToken) break;
+            
+            // Crear wrapper para cada página
+            const pageWrapper = document.createElement("div");
+            pageWrapper.className = "page-wrapper";
+            
+            // Añadir al contenedor
+            container.appendChild(pageWrapper);
+            
+            // Renderizar la página
+            const renderPromise = renderPagina(pdf, i, pageWrapper, token, modoMovil);
+            renderPromises.push(renderPromise);
+            
+            // Log de progreso
+            if (i % 10 === 0) {
+                console.log(`📄 Progreso: ${i}/${totalPages} páginas`);
+                await new Promise(resolve => setTimeout(resolve, 5));
+            }
+        }
+        
+        // Esperar a que todas las páginas se rendericen
+        await Promise.all(renderPromises);
+        
         // 🧹 LIMPIEZA
         if (pdfDocument) {
             pdfDocument.destroy();
@@ -496,11 +472,8 @@ async function loadPDF() {
             });
         }
 
-        // 🔥 UI FINAL
-        container.classList.add("loaded");
         loader.style.display = "none";
-        
-        console.log(`✅ RENDER COMPLETO: ${totalPages} páginas en ${modoMovil ? totalPages : Math.ceil(totalPages/2)} filas`);
+        console.log(`✅ RENDER COMPLETO: ${totalPages} páginas`);
 
     } catch (err) {
         console.error("❌ Error loadPDF:", err);
@@ -515,24 +488,29 @@ async function loadPDF() {
     }
 }
 
-// 🎯 RENDER PÁGINA PARA ESCRITORIO (2 COLUMNAS) - CORREGIDO
-async function renderSinglePageEscritorio(pdf, pageNum, containerElement, token) {
+// 🎯 FUNCIÓN PARA RENDERIZAR CADA PÁGINA (UNIFICADA)
+async function renderPagina(pdf, pageNum, containerElement, token, modoMovil) {
     if (token !== renderToken) return null;
 
     try {
         const page = await pdf.getPage(pageNum);
         
-        // Calcular escala para escritorio - adaptable al ancho de la columna
-        const containerWidth = containerElement.clientWidth || 600;
-        let targetWidth = containerWidth - 20;
+        // Calcular escala según dispositivo
+        let scale;
         
-        if (targetWidth < 300) targetWidth = 300;
-        
-        const baseViewport = page.getViewport({ scale: 1 });
-        let scale = targetWidth / baseViewport.width;
-        
-        // Limitar escala (mínimo 0.4, máximo 1.5)
-        scale = Math.min(Math.max(scale, 0.4), 1.5);
+        if (modoMovil) {
+            // Móvil: escala basada en ancho de pantalla
+            const containerWidth = window.innerWidth - 40;
+            const baseViewport = page.getViewport({ scale: 1 });
+            scale = (containerWidth * 0.9) / baseViewport.width;
+            scale = Math.min(Math.max(scale, 0.5), 2.5);
+        } else {
+            // Escritorio: escala basada en el contenedor (el CSS grid ya da el ancho)
+            const containerWidth = containerElement.clientWidth || 500;
+            const baseViewport = page.getViewport({ scale: 1 });
+            scale = (containerWidth * 0.95) / baseViewport.width;
+            scale = Math.min(Math.max(scale, 0.4), 1.8);
+        }
         
         const viewport = page.getViewport({ scale: scale });
         
@@ -542,13 +520,9 @@ async function renderSinglePageEscritorio(pdf, pageNum, containerElement, token)
         
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        canvas.style.width = `${viewport.width}px`;
-        canvas.style.height = `${viewport.height}px`;
-        canvas.style.opacity = "0";
-        canvas.style.transition = "opacity 0.3s ease";
-        canvas.style.display = "block";
-        canvas.style.boxShadow = "0 10px 25px rgba(0,0,0,0.3)";
-        canvas.style.borderRadius = "8px";
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        canvas.style.maxWidth = `${viewport.width}px`;
         canvas.style.backgroundColor = "white";
         
         // Limpiar contenedor y añadir canvas
@@ -563,73 +537,6 @@ async function renderSinglePageEscritorio(pdf, pageNum, containerElement, token)
         
         await renderTask.promise;
         page.cleanup();
-        
-        // Mostrar con animación
-        requestAnimationFrame(() => {
-            canvas.style.opacity = "1";
-        });
-        
-        return pageNum;
-        
-    } catch (err) {
-        console.warn(`⚠️ Error página ${pageNum}:`, err);
-        return null;
-    }
-}
-
-// 🎯 RENDER PÁGINA PARA MÓVIL (1 COLUMNA)
-async function renderSinglePageMovil(pdf, pageNum, container, token) {
-    if (token !== renderToken) return null;
-
-    try {
-        const page = await pdf.getPage(pageNum);
-        
-        // Calcular escala para móvil
-        const containerWidth = container.clientWidth - 40;
-        const baseViewport = page.getViewport({ scale: 1 });
-        let scale = (containerWidth * 0.95) / baseViewport.width;
-        scale = Math.min(Math.max(scale, 0.5), 2.5);
-        
-        const viewport = page.getViewport({ scale: scale });
-        
-        // Crear canvas
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        canvas.style.width = `${viewport.width}px`;
-        canvas.style.height = `${viewport.height}px`;
-        canvas.style.opacity = "0";
-        canvas.style.transition = "opacity 0.3s ease";
-        canvas.style.display = "block";
-        canvas.style.margin = "0 auto";
-        canvas.style.boxShadow = "0 10px 25px rgba(0,0,0,0.3)";
-        canvas.style.borderRadius = "8px";
-        
-        // Wrapper
-        const pageWrapper = document.createElement("div");
-        pageWrapper.className = "page-wrapper";
-        pageWrapper.style.width = "100%";
-        pageWrapper.style.display = "flex";
-        pageWrapper.style.justifyContent = "center";
-        pageWrapper.style.marginBottom = "20px";
-        pageWrapper.appendChild(canvas);
-        
-        container.appendChild(pageWrapper);
-        
-        // Renderizar
-        const renderTask = page.render({
-            canvasContext: ctx,
-            viewport: viewport
-        });
-        
-        await renderTask.promise;
-        page.cleanup();
-        
-        requestAnimationFrame(() => {
-            canvas.style.opacity = "1";
-        });
         
         return pageNum;
         
@@ -970,6 +877,17 @@ document.addEventListener(
 
             await loadConfig();
             initPDFZoom();
+
+            // Escuchar cambios de tamaño de ventana para re-renderizar si es necesario
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    if (pdfDocument && !cargandoPDF) {
+                        loadPDF();
+                    }
+                }, 500);
+            });
 
         }catch(err){
 
