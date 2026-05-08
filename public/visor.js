@@ -343,162 +343,249 @@ async function registrarSesionExpirada(user){
 }
 
 // 📥 CARGAR PDF - VERSIÓN CORREGIDA CON GRID 2 COLUMNAS
-async function loadPDF() {
-    try {
-        const container = document.getElementById("pdfContainer");
-        const loader = document.getElementById("loader");
+async function loadPDF(){
 
-        const petIndex = document.getElementById("petSelect").value;
-        const area = document.getElementById("areaSelect").value;
+    try{
 
-        // 🔒 VALIDACIONES
-        if (!config.pets[petIndex] || !config.pets[petIndex].archivos[area]) {
+        const container =
+            document.getElementById(
+                "pdfContainer"
+            );
+
+        const loader =
+            document.getElementById(
+                "loader"
+            );
+
+        const petIndex =
+            document.getElementById(
+                "petSelect"
+            ).value;
+
+        const area =
+            document.getElementById(
+                "areaSelect"
+            ).value;
+
+        if(
+            !config.pets[petIndex] ||
+            !config.pets[petIndex]
+            .archivos[area]
+        ){
             return;
         }
 
-        const fileName = config.pets[petIndex].archivos[area];
+        const fileName =
+            config.pets[petIndex]
+            .archivos[area];
 
-        // 🔥 UI LIMPIA
-        container.innerHTML = "";
-        
-        // Mostrar loader con animación
-        if (loader) {
-            loader.classList.add('active');
-        }
+        // 🚫 EVITAR DOBLE CARGA
         cargandoPDF = true;
 
-        // 🔐 SUPABASE URL
-        const { data, error } = await supabaseClient
+        // 🧹 LIMPIAR
+        container.innerHTML = "";
+
+        loader.style.display = "flex";
+
+        // 🔐 URL
+        const {
+            data,
+            error
+        } = await supabaseClient
             .storage
             .from(config.bucket)
-            .createSignedUrl(fileName, 3600);
+            .createSignedUrl(
+                fileName,
+                3600
+            );
 
-        if (error) {
-            showAlert("❌ Error cargando PDF", "error");
-            if (loader) loader.classList.remove('active');
+        if(error){
+
+            loader.style.display =
+                "none";
+
             cargandoPDF = false;
+
+            showAlert(
+                "❌ Error cargando PDF",
+                "error"
+            );
+
             return;
         }
 
         // 🚀 CANCELAR ANTERIOR
-        if (currentLoadingTask) {
-            try {
+        if(currentLoadingTask){
+
+            try{
                 currentLoadingTask.destroy();
-            } catch (err) {
-                console.warn("⚠️ Task anterior destruida");
-            }
+            }catch(e){}
         }
 
-        const token = ++renderToken;
-        currentLoadingTask = null;
+        const token =
+            ++renderToken;
 
-        // 🔥 CONFIGURACIÓN PARA CARGAR TODAS LAS PÁGINAS
-        currentLoadingTask = pdfjsLib.getDocument({
-            url: data.signedUrl,
-            verbosity: 0,
-            disableAutoFetch: false,
-            rangeChunkSize: 65536,
-            maxImageSize: -1,
-            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-            cMapPacked: true
-        });
+        // 📄 PDF
+        currentLoadingTask =
+            pdfjsLib.getDocument({
 
-        const pdf = await currentLoadingTask.promise;
+                url:data.signedUrl,
+
+                verbosity:0,
+
+                disableAutoFetch:false,
+
+                rangeChunkSize:65536,
+
+                cMapUrl:
+                    "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/",
+
+                cMapPacked:true
+            });
+
+        const pdf =
+            await currentLoadingTask.promise;
+
         pdfDocument = pdf;
-        
-        console.log(`✅ PDF CARGADO: ${pdf.numPages} páginas`);
 
-        // 🚫 TOKEN VÁLIDO
-        if (token !== renderToken) {
-            pdf.destroy();
-            cargandoPDF = false;
-            if (loader) loader.classList.remove('active');
+        if(token !== renderToken){
             return;
         }
 
-        const totalPages = pdf.numPages;
-        const modoMovil = esMovil();
-        
-        console.log(`📄 Renderizando ${totalPages} páginas - ${modoMovil ? 'MÓVIL (1 columna)' : 'ESCRITORIO (2 columnas por fila)'}`);
-        
-        // 🔥 IMPORTANTE: Limpiar estilos inline y dejar que CSS maneje el grid
-        container.removeAttribute('style');
-        container.classList.remove('modo-movil', 'modo-escritorio');
-        
-        // Aplicar clase según dispositivo (el CSS se encargará del grid)
-        if (modoMovil) {
-            container.classList.add('modo-movil');
-        } else {
-            container.classList.add('modo-escritorio');
+        const totalPages =
+            pdf.numPages;
+
+        const modoMovil =
+            esMovil();
+
+        // =========================
+        // 🎨 GRID LAYOUT
+        // =========================
+
+        if(modoMovil){
+
+            container.style.display =
+                "flex";
+
+            container.style.flexDirection =
+                "column";
+
+            container.style.alignItems =
+                "center";
+
+            container.style.gap =
+                "20px";
+
+        }else{
+
+            // ✅ 2 COLUMNAS REALES
+            container.style.display =
+                "grid";
+
+            container.style.gridTemplateColumns =
+                "repeat(2,minmax(0,1fr))";
+
+            container.style.alignItems =
+                "start";
+
+            container.style.justifyItems =
+                "center";
+
+            container.style.gap =
+                "24px";
+
+            container.style.padding =
+                "20px";
         }
-        
-        // Array para almacenar las promesas de renderizado
-        const renderPromises = [];
-        
-        // Renderizar todas las páginas - el orden de inserción es importante
-        // para que CSS grid las organice correctamente
-        for (let i = 1; i <= totalPages; i++) {
-            if (token !== renderToken) break;
-            
-            // Crear wrapper para cada página
-            const pageWrapper = document.createElement("div");
-            pageWrapper.className = "page-wrapper";
-            pageWrapper.setAttribute('data-page', i);
-            
-            // Añadir al contenedor
-            container.appendChild(pageWrapper);
-            
-            // Renderizar la página
-            const renderPromise = renderPagina(pdf, i, pageWrapper, token, modoMovil);
-            renderPromises.push(renderPromise);
-            
-            // Log de progreso cada 10 páginas
-            if (i % 10 === 0) {
-                console.log(`📄 Progreso: ${i}/${totalPages} páginas`);
-                await new Promise(resolve => setTimeout(resolve, 5));
+
+        // =========================
+        // 📄 RENDER
+        // =========================
+
+        for(
+            let i = 1;
+            i <= totalPages;
+            i++
+        ){
+
+            if(token !== renderToken){
+                return;
             }
-        }
-        
-        // Esperar a que todas las páginas se rendericen
-        await Promise.all(renderPromises);
-        
-        // 🧹 LIMPIEZA
-        if (pdfDocument) {
-            pdfDocument.destroy();
-            pdfDocument = null;
-        }
-        
-        if (currentLoadingTask) {
-            currentLoadingTask.destroy();
-            currentLoadingTask = null;
+
+            const pageWrapper =
+                document.createElement(
+                    "div"
+                );
+
+            pageWrapper.className =
+                "page-wrapper";
+
+            // 🔥 CLAVE
+            if(modoMovil){
+
+                pageWrapper.style.width =
+                    "100%";
+
+                pageWrapper.style.maxWidth =
+                    "500px";
+
+            }else{
+
+                // ✅ AQUÍ ESTABA TU ERROR
+                pageWrapper.style.width =
+                    "auto";
+
+                pageWrapper.style.maxWidth =
+                    "100%";
+
+                pageWrapper.style.display =
+                    "flex";
+
+                pageWrapper.style.justifyContent =
+                    "center";
+            }
+
+            container.appendChild(
+                pageWrapper
+            );
+
+            await renderPagina(
+                pdf,
+                i,
+                pageWrapper,
+                token,
+                modoMovil
+            );
         }
 
-        // 👤 LOG
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user) {
-            await supabaseClient.from("logs").insert({
-                user_email: user.email,
-                pet: config.pets[petIndex].nombre,
-                area: `${area} | ${totalPages} PÁGINAS | ${modoMovil ? '1 COLUMNA' : '2 COLUMNAS'}`
-            });
-        }
+        loader.style.display =
+            "none";
 
-        if (loader) loader.classList.remove('active');
         cargandoPDF = false;
-        console.log(`✅ RENDER COMPLETO: ${totalPages} páginas - Layout: ${modoMovil ? '1 columna' : '2 columnas por fila'}`);
 
-    } catch (err) {
-        console.error("❌ Error loadPDF:", err);
-        if (currentLoadingTask) {
-            try {
-                currentLoadingTask.destroy();
-            } catch (e) {}
-        }
-        const loader = document.getElementById("loader");
-        if (loader) loader.classList.remove('active');
+        console.log(
+            `✅ PDF COMPLETO ${totalPages} páginas`
+        );
+
+    }catch(err){
+
+        console.error(
+            "❌ Error loadPDF:",
+            err
+        );
+
+        cargandoPDF = false;
+
         currentLoadingTask = null;
-        cargandoPDF = false;
-        showAlert(`❌ Error PDF: ${err.message}`, "error");
+
+        document.getElementById(
+            "loader"
+        ).style.display = "none";
+
+        showAlert(
+            `❌ Error PDF: ${err.message}`,
+            "error"
+        );
     }
 }
 
@@ -545,7 +632,7 @@ async function renderPagina(pdf, pageNum, containerElement, token, modoMovil) {
         
         // Estilos CSS
         canvas.style.display = 'block';
-        canvas.style.width = '100%';
+        canvas.style.width = modoMovil ? '100%' : '95%';
         canvas.style.height = 'auto';
         canvas.style.maxWidth = '100%';
         canvas.style.backgroundColor = 'white';
