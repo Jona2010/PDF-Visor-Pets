@@ -5,135 +5,68 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Biblioteca PETS | INTELLIALL</title>
+<title>INTELLIALL | Visor PETS</title>
 
-<meta name="description" content="Acceso seguro al visor de documentos PETS con autenticación protegida para usuarios operativos de Intelliall.">
-<meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#0f172a">
+<meta name="description" content="Visor PETS">
+<meta name="robots" content="noindex,nofollow">
 
-<link rel="stylesheet" href="styles_index.css">
+<link rel="stylesheet" href="styles_visor.css">
+
+<!-- Librerías simples -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 </head>
 
-<body class="login-body">
+<body>
 
-<div class="login-container">
+<div class="app">
 
-    <!-- 🔹 IZQUIERDA -->
-    <div class="login-left">
+    <header class="header">
 
-        <div class="brand-box">
-            <h1>INTELLIALL</h1>
-            <p>PETS Viewer</p>
-            <span>Acceso seguro a documentación operativa</span>
+        <div class="logo">
+            <h1>📄 INTELLIALL</h1>
+            <p>Visor PETS</p>
         </div>
 
-        <div class="brand-info">
-            <small>
-                Plataforma protegida para consulta de procedimientos,
-                estándares y documentación interna.
-            </small>
+        <div class="controls">
+
+            <select id="petSelect">
+                <option value="">Mascota</option>
+            </select>
+
+            <select id="areaSelect">
+                <option value="">Área</option>
+            </select>
+
         </div>
 
-    </div>
+        <button id="logoutBtn">
+            Salir
+        </button>
 
-    <!-- 🔹 DERECHA -->
-    <div class="login-right">
+    </header>
 
-        <div class="login-card">
+    <main class="viewer">
 
-            <h2>Iniciar Sesión</h2>
-            <p class="login-subtitle">
-                Ingresa con tus credenciales autorizadas
+        <div id="pdfContainer" class="pdf-view">
+
+            <p class="message">
+                Selecciona una mascota y un área
             </p>
 
-            <!-- 🔥 FORMULARIO USUARIO -->
-            <form id="loginForm">
-
-                <!-- EMAIL -->
-                <div class="input-group">
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        placeholder="Correo electrónico"
-                        autocomplete="username"
-                        required
-                    >
-                </div>
-
-                <!-- PASSWORD -->
-                <div class="input-group">
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        placeholder="Contraseña"
-                        autocomplete="current-password"
-                        required
-                    >
-                    <span id="togglePass" class="toggle-pass">👁️</span>
-                </div>
-
-                <!-- OPCIONES -->
-                <div class="login-options">
-                    <label>
-                        <input type="checkbox">
-                        Recordarme
-                    </label>
-
-                    <span class="forgot">
-                        ¿Olvidaste?
-                    </span>
-                </div>
-
-                <!-- BOTÓN LOGIN -->
-                <button type="submit" class="login-btn">
-                    Ingresar
-                </button>
-
-                <!-- 🔵 LOGIN GOOGLE -->
-                <button
-                    type="button"
-                    id="googleLogin"
-                    class="google-btn"
-                >
-                    <img
-                        src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg"
-                        width="20"
-                        alt="Google"
-                    >
-
-                    Ingresar con Google
-                </button>
-
-            </form>
-
-            <!-- 🔐 DIVISOR -->
-            <div class="login-divider">
-                <span>Acceso restringido</span>
-            </div>
-
-            <!-- 🔥 BOTÓN ADMIN -->
-            <button
-                type="button"
-                class="admin-btn"
-                onclick="location.href='admin-login.html'"
-            >
-                🔐 Ingresar como Administrador
-            </button>
-
         </div>
 
-    </div>
+        <div id="loader" class="loader">
+            <p>Cargando PDF...</p>
+        </div>
+
+    </main>
 
 </div>
 
-<!-- LIBRERÍA SUPABASE -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<!-- APP LOGIN USUARIO -->
-<script src="app.js"></script>
+<!-- Script principal -->
+<script src="visor.js"></script>
 
 </body>
 </html>
