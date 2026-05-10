@@ -1,1182 +1,777 @@
+/**
+ * ====================================================================
+ * visor.js - Visor PROFESIONAL de PETS
+ * Versión: 3.2.0 (CORREGIDO - SIN TOKEN - SIN DESTROY ANTICIPADO)
+ * ====================================================================
+ * 
+ * FUNCIONES PRINCIPALES:
+ * - autenticarUsuario()     → Valida sesión y correo corporativo
+ * - cargarConfiguracion()   → Obtiene y carga la configuración del sistema
+ * - cargarListaMascotas()   → Pobla el selector de mascotas/PETS
+ * - actualizarAreas()       → Actualiza áreas según mascota seleccionada
+ * - cargarPDF()             → Función principal: carga y renderiza TODAS las páginas
+ * - renderizarPagina()      → Renderiza una página individual en canvas
+ * - manejarZoomRueda()      → Zoom con Ctrl + Rueda del mouse
+ * - manejarZoomPinch()      → Zoom táctil para móviles
+ * - cerrarSesion()          → Cierra sesión y redirige al login
+ * ====================================================================
+ */
+
 // ===============================
-// 🔐 CONFIGURACIÓN SUPABASE (UNA SOLA VEZ)
+// 🔐 CONFIGURACIÓN SUPABASE
 // ===============================
 const supabaseClient = supabase.createClient(
     "https://xnkpjgrxgwkfhgrrzwhu.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhua3BqZ3J4Z3drZmhncnJ6d2h1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjY5NTAsImV4cCI6MjA5MTk0Mjk1MH0.XPvMGOe5ajGzFZRD4aQ9imGZ1BixN0Ht-8I9o0iGb8I"
 );
 
-let config = null;
+// ===============================
+// 📦 VARIABLES GLOBALES
+// ===============================
+let configuracion = null;           // Configuración del sistema (config.json)
+let escalaActual = 1.0;             // Escala de zoom actual (0.5 - 1.8)
+let tareaActual = null;              // Tarea de carga de PDF actual
+let documentoPDF = null;             // Referencia al documento PDF cargado
+let cargando = false;                // Bandera para evitar múltiples cargas
+let totalPaginas = 0;                // Total de páginas del PDF actual
+let renderCancelado = false;         // Bandera para cancelar renderizado
 
-let pdfScale = 1;
+// Variables para zoom táctil
+let distanciaInicial = null;
+let timeoutZoom = null;
 
-// 🔒 EVITAR MÚLTIPLES CARGAS PDF
-let renderToken = 0;
-let currentLoadingTask = null;
-let pdfDocument = null;
-let cargandoPDF = false;
+// Variables para control de sesión
+let ultimaActividad = Date.now();
+const TIEMPO_MAX_INACTIVIDAD = 10 * 60 * 1000; // 10 minutos
+let timeoutActividad = null;
+let verificandoSesion = false;
 
 // ===============================
-// 🔐 VALIDAR SESIÓN GOOGLE
+// 🚪 EXPORTAR FUNCIONES GLOBALES
 // ===============================
+window.logout = logout;
+window.showAlert = showAlert;
 
-(async () => {
+// ===============================
+// 🔐 DETECTAR NAVEGADOR
+// ===============================
+function esBrave() {
+    return navigator.brave !== undefined;
+}
 
-    try{
+// ===============================
+// 🔐 AUTENTICACIÓN DE USUARIO
+// ===============================
+(async function autenticarUsuario() {
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
 
-        const {
-            data:{ session }
-        } = await supabaseClient
-            .auth
-            .getSession();
-
-        // 🚫 SIN SESIÓN
-        if(!session){
-
-            window.location.href =
-                "index.html";
-
+        if (!session) {
+            window.location.href = "index.html";
             return;
         }
 
-        const email =
-            session.user.email || "";
+        const email = session.user.email || "";
 
-        // 🔒 SOLO CORPORATIVOS
-        if(
-            !email.endsWith(
-                "@intelliall.com"
-            )
-        ){
-
-            await supabaseClient
-                .auth
-                .signOut();
-
-            showAlert(
-                "⛔ Solo se permiten correos corporativos",
-                "warning"
-            );
-
-            window.location.href =
-                "index.html";
-
+        if (!email.endsWith("@intelliall.com")) {
+            await supabaseClient.auth.signOut();
+            showAlert("⛔ Solo se permiten correos corporativos", "warning");
+            window.location.href = "index.html";
             return;
         }
-
-    }catch(err){
-
-        console.error(
-            "❌ Error validando sesión:",
-            err
-        );
-
-        window.location.href =
-            "index.html";
+        
+        console.log("✅ Usuario autenticado:", email);
+        console.log("🦁 Brave detectado:", esBrave());
+        
+    } catch (error) {
+        console.error("❌ Error en autenticación:", error);
+        window.location.href = "index.html";
     }
-
 })();
 
 // ===============================
-// 📄 CARGAR CONFIG
+// 📄 CARGAR CONFIGURACIÓN DEL SISTEMA
 // ===============================
-
-async function loadConfig(){
-
-    try{
-
-        const res =
-            await fetch("config.json");
-
-        if(!res.ok){
-
-            throw new Error(
-                "No se pudo cargar config.json"
-            );
+async function cargarConfiguracion() {
+    try {
+        const respuesta = await fetch("config.json");
+        
+        if (!respuesta.ok) {
+            throw new Error("No se pudo cargar config.json");
         }
-
-        config = await res.json();
-
-        loadPDFList();
-
-    }catch(err){
-
-        console.error(
-            "❌ Error cargando config:",
-            err
-        );
-
-        showAlert(
-            "❌ Error cargando configuración",
-            "error"
-        );
+        
+        configuracion = await respuesta.json();
+        console.log("✅ Configuración cargada correctamente");
+        
+        cargarListaMascotas();
+        
+    } catch (error) {
+        console.error("❌ Error cargando configuración:", error);
+        showAlert("❌ Error cargando configuración del sistema", "error");
     }
 }
 
-// 📄 CARGAR LISTA PDF
-function loadPDFList(){
+// ===============================
+// 📋 CARGAR LISTA DE MASCOTAS/PETS
+// ===============================
+function cargarListaMascotas() {
+    try {
+        const selectorMascota = document.getElementById("petSelect");
 
-    try{
-
-        const petSelect =
-            document.getElementById(
-                "petSelect"
-            );
-
-        if(
-            !config ||
-            !config.pets ||
-            !Array.isArray(config.pets)
-        ){
-
-            console.error(
-                "❌ Config inválida"
-            );
-
+        if (!configuracion || !configuracion.pets || !Array.isArray(configuracion.pets)) {
+            console.error("❌ Configuración inválida");
             return;
         }
 
-        // 🔥 LIMPIAR
-        petSelect.innerHTML = "";
+        selectorMascota.innerHTML = "";
 
-        // 🔥 OPTIONS
-        config.pets.forEach((pet, index) => {
-
-            const option =
-                document.createElement(
-                    "option"
-                );
-
-            option.value = index;
-
-            option.textContent =
-                pet.nombre;
-
-            petSelect.appendChild(option);
+        configuracion.pets.forEach((mascota, indice) => {
+            const opcion = document.createElement("option");
+            opcion.value = indice;
+            opcion.textContent = mascota.nombre;
+            selectorMascota.appendChild(opcion);
         });
 
-        // 🔥 DEFAULT
-        petSelect.selectedIndex = 0;
-
-        // 🚫 EVITAR LISTENERS DUPLICADOS
-        petSelect.onchange =
-            updateAreas;
-
-        // 🔥 INICIAL
-        updateAreas();
-
-    }catch(err){
-
-        console.error(
-            "❌ Error loadPDFList:",
-            err
-        );
+        selectorMascota.selectedIndex = 0;
+        selectorMascota.onchange = actualizarAreas;
+        
+        actualizarAreas();
+        
+    } catch (error) {
+        console.error("❌ Error cargando lista de mascotas:", error);
     }
 }
 
-// 🚪 LOGOUT
-async function logout(){
+// ===============================
+// 🔄 ACTUALIZAR ÁREAS SEGÚN MASCOTA
+// ===============================
+function actualizarAreas() {
+    try {
+        const selectorMascota = document.getElementById("petSelect");
+        const selectorArea = document.getElementById("areaSelect");
+        const indiceMascota = selectorMascota.value;
 
-    try{
-
-        await supabaseClient
-            .auth
-            .signOut();
-
-    }catch(err){
-
-        console.error(
-            "❌ Error logout:",
-            err
-        );
-    }
-
-    window.location.href =
-        "index.html";
-}
-
-// 🔄 ACTUALIZAR ÁREAS
-function updateAreas(){
-
-    try{
-
-        const petSelect =
-            document.getElementById(
-                "petSelect"
-            );
-
-        const areaSelect =
-            document.getElementById(
-                "areaSelect"
-            );
-
-        const petIndex =
-            petSelect.value;
-
-        // 🚫 VALIDAR
-        if(
-            !config ||
-            !config.pets ||
-            !config.pets[petIndex]
-        ){
+        if (!configuracion || !configuracion.pets || !configuracion.pets[indiceMascota]) {
             return;
         }
 
-        // 🔥 LIMPIAR
-        areaSelect.innerHTML = "";
+        selectorArea.innerHTML = "";
+        const areas = configuracion.pets[indiceMascota].archivos;
 
-        const areas =
-            config.pets[petIndex]
-            .archivos;
+        if (!areas) return;
 
-        // 🚫 VALIDAR
-        if(!areas){
-            return;
-        }
-
-        // 🔥 OPTIONS
-        Object.keys(areas)
-        .forEach(area => {
-
-            const option =
-                document.createElement(
-                    "option"
-                );
-
-            option.value = area;
-
-            option.textContent =
-                area;
-
-            areaSelect.appendChild(
-                option
-            );
+        Object.keys(areas).forEach(area => {
+            const opcion = document.createElement("option");
+            opcion.value = area;
+            opcion.textContent = area;
+            selectorArea.appendChild(opcion);
         });
 
-        // 🔥 DEFAULT
-        areaSelect.selectedIndex = 0;
-
-        // 🚫 EVITAR DUPLICADOS
-        areaSelect.onchange = () => {
-
-            if(!cargandoPDF){
-
-                loadPDF();
+        selectorArea.selectedIndex = 0;
+        selectorArea.onchange = () => {
+            if (!cargando) {
+                cargarPDF();
             }
         };
 
-        // 🔥 SOLO UNA CARGA
-        if(!cargandoPDF){
-
-            requestAnimationFrame(() => {
-
-                loadPDF();
-            });
+        if (!cargando) {
+            // ✅ REEMPLAZADO: requestAnimationFrame por setTimeout
+            setTimeout(() => {
+                if (!cargando) {
+                    cargarPDF();
+                }
+            }, 100);
         }
-
-    }catch(err){
-
-        console.error(
-            "❌ Error updateAreas:",
-            err
-        );
+        
+    } catch (error) {
+        console.error("❌ Error actualizando áreas:", error);
     }
 }
 
-// 📱 DETECTAR MÓVIL
-function esMovil(){
+// ===============================
+// 📱 DETECTAR DISPOSITIVO MÓVIL
+// ===============================
+function esDispositivoMovil() {
     return window.innerWidth <= 768;
 }
 
-// ⏳ REGISTRAR SESIÓN EXPIRADA
-async function registrarSesionExpirada(user){
+// ===============================
+// 🔔 MOSTRAR ALERTA EN PANTALLA
+// ===============================
+function showAlert(mensaje, tipo = "error") {
+    document.querySelectorAll(".custom-alert").forEach(alerta => alerta.remove());
 
-    try{
+    const alerta = document.createElement("div");
+    alerta.className = `custom-alert ${tipo}`;
+    alerta.textContent = mensaje;
+    alerta.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        padding: 12px 24px;
+        border-radius: 8px;
+        background-color: ${tipo === "error" ? "#dc2626" : "#f59e0b"};
+        color: white;
+        font-weight: bold;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        font-family: system-ui, -apple-system, sans-serif;
+    `;
+    
+    document.body.appendChild(alerta);
 
-        // 🔔 ALERTA
-        await supabaseClient
-            .from("alerts")
-            .insert({
+    requestAnimationFrame(() => {
+        alerta.style.opacity = "1";
+    });
 
-                user_id:
-                    user?.id || null,
-
-                email:
-                    user?.email ||
-                    "Desconocido",
-
-                message:
-                    `⏳ Sesión expirada: ${
-                        user?.email || ""
-                    }`,
-
-                nivel:"warning",
-
-                visto:false,
-
-                created_at:
-                    new Date()
-                    .toISOString()
-            });
-
-        // 📊 LOG
-        await supabaseClient
-            .from("logs")
-            .insert({
-
-                user_email:
-                    user?.email ||
-                    "Desconocido",
-
-                pet:"SESSION",
-
-                area:"Sesión expirada"
-            });
-
-    }catch(err){
-
-        console.error(
-            "❌ Error sesión expirada:",
-            err
-        );
-    }
+    setTimeout(() => {
+        alerta.style.opacity = "0";
+        setTimeout(() => {
+            if (alerta.parentNode) {
+                alerta.remove();
+            }
+        }, 300);
+    }, 3000);
 }
 
-// 📥 CARGAR PDF - VERSIÓN CORREGIDA CON GRID 2 COLUMNAS
-async function loadPDF(){
-
-    try{
-
-        const container =
-            document.getElementById(
-                "pdfContainer"
-            );
-
-        const loader =
-            document.getElementById(
-                "loader"
-            );
-
-        const petIndex =
-            document.getElementById(
-                "petSelect"
-            ).value;
-
-        const area =
-            document.getElementById(
-                "areaSelect"
-            ).value;
-
-        if(
-            !config.pets[petIndex] ||
-            !config.pets[petIndex]
-            .archivos[area]
-        ){
-            return;
-        }
-
-        const fileName =
-            config.pets[petIndex]
-            .archivos[area];
-
-        // 🚫 EVITAR DOBLE CARGA
-        cargandoPDF = true;
-
-        // 🧹 LIMPIAR
-        container.innerHTML = "";
-
-        loader.style.display = "flex";
-
-        // 🔐 URL
-        const {
-            data,
-            error
-        } = await supabaseClient
-            .storage
-            .from(config.bucket)
-            .createSignedUrl(
-                fileName,
-                3600
-            );
-
-        if(error){
-
-            loader.style.display =
-                "none";
-
-            cargandoPDF = false;
-
-            showAlert(
-                "❌ Error cargando PDF",
-                "error"
-            );
-
-            return;
-        }
-
-        // 🚀 CANCELAR ANTERIOR
-        if(currentLoadingTask){
-
-            try{
-                currentLoadingTask.destroy();
-            }catch(e){}
-        }
-
-        const token =
-            ++renderToken;
-
-        // 📄 PDF
-        currentLoadingTask =
-            pdfjsLib.getDocument({
-
-                url:data.signedUrl,
-
-                verbosity:0,
-
-                disableAutoFetch:false,
-
-                rangeChunkSize:65536,
-
-                cMapUrl:
-                    "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/",
-
-                cMapPacked:true
-            });
-
-        const pdf =
-            await currentLoadingTask.promise;
-
-        pdfDocument = pdf;
-
-        if(token !== renderToken){
-            return;
-        }
-
-        const totalPages =
-            pdf.numPages;
-
-        const modoMovil =
-            esMovil();
-
-        // =========================
-        // 🎨 GRID LAYOUT
-        // =========================
-
-        if (modoMovil) {
-
-            container.style.display = "flex";
-            container.style.flexDirection = "column";
-            container.style.alignItems = "center";
-            container.style.gap = "20px";
-
-        } else {
-
-            // ✅ GRID 2 COLUMNAS REAL
-            container.style.display = "grid";
-
-            container.style.gridTemplateColumns =
-                "repeat(2, minmax(420px, 1fr))";
-
-            container.style.justifyContent =
-                "center";
-
-            container.style.alignItems =
-                "start";
-
-            container.style.gap =
-                "24px";
-
-            container.style.padding =
-                "20px";
-
-            container.style.maxWidth =
-                "1600px";
-
-            container.style.margin =
-                "0 auto";
-        }
-
-        // =========================
-        // 📄 RENDER
-        // =========================
-
-        for(
-            let i = 1;
-            i <= totalPages;
-            i++
-        ){
-
-            if(token !== renderToken){
-                return;
-            }
-
-            const pageWrapper =
-                document.createElement(
-                    "div"
-                );
-
-            pageWrapper.className =
-                "page-wrapper";
-
-            // 🔥 CONFIGURAR WRAPPER
-            if(modoMovil){
-
-                pageWrapper.style.width =
-                    "100%";
-
-                pageWrapper.style.maxWidth =
-                    "500px";
-
-                pageWrapper.style.display =
-                    "flex";
-
-                pageWrapper.style.justifyContent =
-                    "center";
-
-                pageWrapper.style.alignItems =
-                    "flex-start";
-
-            }else{
-
-                // ✅ 2 COLUMNAS REALES
-                pageWrapper.style.width =
-                    "100%";
-
-                // 🔥 TAMAÑO CONTROLADO
-                pageWrapper.style.maxWidth =
-                    "700px";
-
-                pageWrapper.style.display =
-                    "flex";
-
-                pageWrapper.style.justifyContent =
-                    "center";
-
-                pageWrapper.style.alignItems =
-                    "flex-start";
-            }
-
-            container.appendChild(
-                pageWrapper
-            );
-
-            await renderPagina(
-                pdf,
-                i,
-                pageWrapper,
-                token,
-                modoMovil
-            );
-        }
-
-        loader.style.display =
-            "none";
-
-        cargandoPDF = false;
-
-        console.log(
-            `✅ PDF COMPLETO ${totalPages} páginas`
-        );
-
-    }catch(err){
-
-        console.error(
-            "❌ Error loadPDF:",
-            err
-        );
-
-        cargandoPDF = false;
-
-        currentLoadingTask = null;
-
-        document.getElementById(
-            "loader"
-        ).style.display = "none";
-
-        showAlert(
-            `❌ Error PDF: ${err.message}`,
-            "error"
-        );
-    }
-}
-
-// 🎯 FUNCIÓN PARA RENDERIZAR CADA PÁGINA (OPTIMIZADA)
-async function renderPagina(pdf, pageNum, containerElement, token, modoMovil) {
-    if (token !== renderToken) return null;
-
+// ===============================
+// 🚪 CERRAR SESIÓN
+// ===============================
+async function logout() {
     try {
-        const page = await pdf.getPage(pageNum);
+        await supabaseClient.auth.signOut();
+        console.log("✅ Sesión cerrada correctamente");
+    } catch (error) {
+        console.error("❌ Error cerrando sesión:", error);
+    }
+    window.location.href = "index.html";
+}
+
+// ===============================
+// ⏰ REGISTRAR SESIÓN EXPIRADA
+// ===============================
+async function registrarSesionExpirada(usuario) {
+    if (!usuario) return;
+    
+    try {
+        await supabaseClient.from("alerts").insert({
+            user_id: usuario?.id || null,
+            email: usuario?.email || "Desconocido",
+            message: `⏳ Sesión expirada por inactividad: ${usuario?.email || ""}`,
+            nivel: "warning",
+            visto: false,
+            created_at: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error("❌ Error registrando sesión expirada:", error);
+    }
+}
+
+// ===============================
+// 🎨 RENDERIZAR PÁGINA INDIVIDUAL (SIN TOKEN)
+// ===============================
+async function renderizarPagina(documentoPDF, numeroPagina, contenedor, esMovil) {
+    try {
+        const pagina = await documentoPDF.getPage(numeroPagina);
         
-        // 🔥 Calcular escala según dispositivo
-        let scale;
+        // Calcular escala según el dispositivo
+        let escala;
         
-        if (modoMovil) {
-            // Móvil: escala basada en ancho de pantalla
-            const containerWidth = Math.min(window.innerWidth - 40, 500);
-            const baseViewport = page.getViewport({ scale: 1 });
-            scale = (containerWidth * 0.95) / baseViewport.width;
-            scale = Math.min(Math.max(scale, 0.5), 2);
+        if (esMovil) {
+            const anchoContenedor = Math.min(window.innerWidth - 40, 500);
+            const viewportBase = pagina.getViewport({ scale: 1 });
+            escala = (anchoContenedor * 0.95) / viewportBase.width;
+            escala = Math.min(Math.max(escala, 0.5), 2);
         } else {
-            // Escritorio: calcular ancho disponible por columna
-            const gridContainer = document.getElementById("pdfContainer");
-            let availableWidth = 450; // Valor por defecto
+            const contenedorGrid = document.getElementById("pdfContainer");
+            let anchoDisponible = 450;
             
-            if (gridContainer) {
-                const gridWidth = gridContainer.clientWidth;
-                // Calcular ancho por columna considerando gap de 24px y padding
-                availableWidth = (gridWidth - 48) / 2;
+            if (contenedorGrid) {
+                const anchoGrid = contenedorGrid.clientWidth;
+                anchoDisponible = (anchoGrid - 48) / 2;
             }
             
-            const baseViewport = page.getViewport({ scale: 1 });
-            scale = (availableWidth * 0.72) / baseViewport.width;
-            scale = Math.min(Math.max(scale, 0.5), 1.3);
+            const viewportBase = pagina.getViewport({ scale: 1 });
+            escala = (anchoDisponible * 0.85) / viewportBase.width;
+            escala = Math.min(Math.max(escala, 0.5), 1.3);
         }
         
-        const viewport = page.getViewport({ scale: scale });
+        // Aplicar zoom adicional con límite MÁXIMO 1.8 (CORREGIDO)
+        escala = escala * escalaActual;
+        escala = Math.min(Math.max(escala, 0.4), 1.8);  // ✅ LÍMITE SEGURO PARA BRAVE
         
-        // Crear canvas
+        const viewport = pagina.getViewport({ scale: escala });
+        
+        // Crear canvas para renderizar
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d", { alpha: false });
+        const contexto = canvas.getContext("2d", { alpha: false });
         
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         
-        // Estilos CSS
-        canvas.style.display = 'block';
-        canvas.style.width = modoMovil ? '100%' : '95%';
-        canvas.style.height = 'auto';
-        canvas.style.maxWidth = '100%';
-        canvas.style.backgroundColor = 'white';
-        canvas.style.borderRadius = '8px';
-        canvas.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+        // ✅ CORREGIDO: usar dimensiones exactas, no porcentaje
+        canvas.style.width = viewport.width + "px";
+        canvas.style.height = viewport.height + "px";
+        canvas.style.maxWidth = "100%";
+        canvas.style.backgroundColor = "white";
+        canvas.style.borderRadius = "8px";
+        canvas.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
+        canvas.style.display = "block";
         
-        // Limpiar contenedor y añadir canvas
-        containerElement.innerHTML = "";
-        containerElement.appendChild(canvas);
+        // Limpiar contenedor y agregar canvas
+        contenedor.innerHTML = "";
+        contenedor.appendChild(canvas);
         
-        // Renderizar
-        const renderTask = page.render({
-            canvasContext: ctx,
+        // Renderizar la página
+        await pagina.render({
+            canvasContext: contexto,
             viewport: viewport,
-            background: 'white'
-        });
+            background: "white"
+        }).promise;
         
-        await renderTask.promise;
-        page.cleanup();
+        // Liberar memoria de la página
+        pagina.cleanup();
         
-        return pageNum;
+        return numeroPagina;
         
-    } catch (err) {
-        console.warn(`⚠️ Error página ${pageNum}:`, err);
+    } catch (error) {
+        console.warn(`⚠️ Error renderizando página ${numeroPagina}:`, error);
+        
+        // Mostrar mensaje de error en la página
+        const divError = document.createElement("div");
+        divError.style.padding = "20px";
+        divError.style.textAlign = "center";
+        divError.style.color = "#dc2626";
+        divError.style.backgroundColor = "#fee2e2";
+        divError.style.borderRadius = "8px";
+        divError.style.margin = "10px";
+        divError.textContent = `❌ Error al cargar página ${numeroPagina}`;
+        
+        contenedor.innerHTML = "";
+        contenedor.appendChild(divError);
+        
         return null;
     }
 }
 
-function showAlert(
-    message,
-    type = "error"
-){
-
-    // 🚫 ELIMINAR ALERTAS ANTERIORES
-    document
-        .querySelectorAll(".custom-alert")
-        .forEach(el => el.remove());
-
-    // 🔥 CREAR
-    const alert =
-        document.createElement("div");
-
-    alert.className =
-        `custom-alert ${type}`;
-
-    alert.textContent = message;
-
-    document.body.appendChild(alert);
-
-    // 🚀 ANIMACIÓN SUAVE
-    requestAnimationFrame(() => {
-
-        alert.classList.add("show");
-    });
-
-    // ⏳ AUTO REMOVE
-    const removeTimer =
-        setTimeout(() => {
-
-            alert.classList.remove("show");
-
-            // 🔥 ESPERAR TRANSICIÓN
-            setTimeout(() => {
-
-                if(alert.parentNode){
-
-                    alert.remove();
-                }
-
-                clearTimeout(removeTimer);
-
-            }, 250);
-
-        }, 3000);
-}
-
 // ===============================
-// 🔐 CONTROL SESIÓN
+// 📥 CARGAR Y RENDERIZAR PDF COMPLETO (SIN TOKEN)
 // ===============================
-
-// ⏱️ ÚLTIMA ACTIVIDAD
-let lastActivity = Date.now();
-
-// ⏳ 10 MINUTOS
-const TIEMPO_MAX =
-    10 * 60 * 1000;
-
-// 🚫 THROTTLE
-let activityTimeout = null;
-
-// ===============================
-// 🎯 ACTUALIZAR ACTIVIDAD
-// ===============================
-function actualizarActividad(){
-
-    // 🚫 EVITAR SPAM
-    if(activityTimeout){
+async function cargarPDF() {
+    // Evitar múltiples cargas simultáneas
+    if (cargando) {
+        console.log("⚠️ Ya hay una carga en progreso, esperando...");
         return;
     }
-
-    activityTimeout =
-        setTimeout(() => {
-
-            lastActivity = Date.now();
-
-            activityTimeout = null;
-
-        }, 300);
-}
-
-// ===============================
-// 🎧 EVENTOS
-// ===============================
-
-document.addEventListener(
-    "click",
-    actualizarActividad,
-    { passive:true }
-);
-
-document.addEventListener(
-    "touchstart",
-    actualizarActividad,
-    { passive:true }
-);
-
-document.addEventListener(
-    "keydown",
-    actualizarActividad,
-    { passive:true }
-);
-
-// ===============================
-// 🚨 REGISTRAR SESIÓN EXPIRADA
-// ===============================
-async function registrarSesionExpirada(user){
-
-    if(!user){
-        return;
-    }
-
-    try{
-
-        await supabaseClient
-            .from("alerts")
-            .insert({
-
-                user_id:user.id,
-
-                email:user.email,
-
-                message:
-                    `⏳ Sesión expirada: ${user.email}`,
-
-                nivel:"warning",
-
-                visto:false
-            });
-
-        console.log(
-            "🚨 Sesión expirada registrada"
-        );
-
-    }catch(err){
-
-        console.error(
-            "❌ Error sesión expirada:",
-            err
-        );
-    }
-}
-
-// ===============================
-// 📱 FIX MOBILE PINCH
-// ===============================
-
-if("ongesturestart" in window){
-
-    document.addEventListener(
-        "gesturestart",
-        (e) => {
-
-            e.preventDefault();
-
-        },
-        { passive:false }
-    );
-}
-
-// ===============================
-// 🔐 VERIFICAR SESIÓN
-// ===============================
-
-let verificandoSesion = false;
-
-setInterval(async () => {
-
-    if(verificandoSesion){
-        return;
-    }
-
-    verificandoSesion = true;
-
-    try{
-
-        const ahora = Date.now();
-
-        if(
-            ahora - lastActivity >
-            TIEMPO_MAX
-        ){
-
-            console.log(
-                "⏳ Sesión expirada"
-            );
-
-            const {
-                data:{ user }
-            } = await supabaseClient
-                .auth
-                .getUser();
-
-            await registrarSesionExpirada(
-                user
-            );
-
-            await supabaseClient
-                .auth
-                .signOut();
-
-            showAlert(
-                "⏳ Sesión expirada por inactividad",
-                "error"
-            );
-
-            setTimeout(() => {
-
-                window.location.href =
-                    "index.html";
-
-            }, 1800);
+    
+    try {
+        const contenedor = document.getElementById("pdfContainer");
+        const loader = document.getElementById("loader");
+        const selectorMascota = document.getElementById("petSelect");
+        const selectorArea = document.getElementById("areaSelect");
+        const indiceMascota = selectorMascota.value;
+        const areaSeleccionada = selectorArea.value;
+        
+        // Validar configuración
+        if (!configuracion?.pets?.[indiceMascota]?.archivos?.[areaSeleccionada]) {
+            console.error("❌ Configuración inválida para el área seleccionada");
+            return;
         }
+        
+        const nombreArchivo = configuracion.pets[indiceMascota].archivos[areaSeleccionada];
+        
+        // Marcar inicio de carga
+        cargando = true;
+        renderCancelado = false;
+        
+        // Limpiar contenedor y mostrar loader
+        contenedor.innerHTML = "";
+        loader.style.display = "flex";
+        
+        // Actualizar texto del loader
+        const textoProgreso = document.getElementById("progressText");
+        if (textoProgreso) {
+            textoProgreso.textContent = "Descargando documento...";
+        }
+        
+        // Obtener URL firmada del PDF
+        let urlPdf;
+        
+        try {
+            const { data: urlData, error: urlError } = await supabaseClient
+                .storage
+                .from(configuracion.bucket)
+                .createSignedUrl(nombreArchivo, 3600);
+            
+            if (urlError) throw urlError;
+            urlPdf = urlData.signedUrl;
+            console.log("✅ URL firmada obtenida");
+            
+            // 🔥 Fallback para Brave
+            if (esBrave()) {
+                console.log("🦁 Brave detectado - Verificando URL...");
+                try {
+                    const testResponse = await fetch(urlPdf, { method: 'HEAD', mode: 'cors' });
+                    if (!testResponse.ok) {
+                        throw new Error(`HTTP ${testResponse.status}`);
+                    }
+                } catch (braveError) {
+                    console.warn("⚠️ Brave: Usando URL pública alternativa");
+                    const { data: publicData } = supabaseClient
+                        .storage
+                        .from(configuracion.bucket)
+                        .getPublicUrl(nombreArchivo);
+                    
+                    if (publicData?.publicUrl) {
+                        urlPdf = publicData.publicUrl;
+                    }
+                }
+            }
+            
+        } catch (urlError) {
+            console.warn("⚠️ Fallback a URL pública");
+            const { data: publicData } = supabaseClient
+                .storage
+                .from(configuracion.bucket)
+                .getPublicUrl(nombreArchivo);
+            
+            if (publicData?.publicUrl) {
+                urlPdf = publicData.publicUrl;
+                console.log("✅ Usando URL pública");
+            } else {
+                throw new Error("No se pudo obtener la URL del documento");
+            }
+        }
+        
+        // Cancelar carga anterior si existe
+        if (tareaActual) {
+            try {
+                if (documentoPDF) {
+                    documentoPDF.destroy();
+                    documentoPDF = null;
+                }
+                tareaActual.destroy();
+            } catch (error) {
+                console.warn("⚠️ Error cancelando tarea anterior:", error);
+            }
+        }
+        
+        // ✅✅✅ CONFIGURACIÓN CORREGIDA - ESTO ARREGLA EL PROBLEMA ✅✅✅
+        tareaActual = pdfjsLib.getDocument({
+            url: urlPdf,
+            verbosity: 0,
+            disableStream: false,     // ✅ FALSE - permite streaming de páginas
+            disableAutoFetch: false,
+            disableRange: false,      // ✅ FALSE - permite fetching por rangos (ESTO ES CRÍTICO)
+            stopAtErrors: false,
+            cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/cmaps/",
+            cMapPacked: true,
+            standardFontDataUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/standard_fonts/",
+            maxImageSize: -1,         // ✅ Sin límite de tamaño de imagen
+            disableCreateObjectURL: false,
+            useSystemFonts: true      // ✅ Mejor compatibilidad
+        });
+        
+        const pdf = await tareaActual.promise;
+        documentoPDF = pdf;
+        
+        totalPaginas = pdf.numPages;
+        console.log(`📄 Documento cargado: ${totalPaginas} páginas`);
+        
+        const esMovil = esDispositivoMovil();
+        
+        // Configurar layout (grid 2 columnas en escritorio, 1 columna en móvil)
+        if (esMovil) {
+            contenedor.style.display = "flex";
+            contenedor.style.flexDirection = "column";
+            contenedor.style.alignItems = "center";
+            contenedor.style.gap = "20px";
+            contenedor.style.padding = "10px";
+        } else {
+            contenedor.style.display = "grid";
+            contenedor.style.gridTemplateColumns = "repeat(2, minmax(450px, 1fr))";
+            contenedor.style.gap = "24px";
+            contenedor.style.padding = "20px";
+            contenedor.style.maxWidth = "1600px";
+            contenedor.style.margin = "0 auto";
+        }
+        
+        // ✅ RENDERIZADO SECUENCIAL OPTIMIZADO
+        for (let pagina = 1; pagina <= totalPaginas; pagina++) {
+            
+            // Verificar si se canceló el renderizado
+            if (renderCancelado) {
+                console.log(`🛑 Renderizado cancelado en página ${pagina}`);
+                break;
+            }
+            
+            // Actualizar progreso
+            if (textoProgreso) {
+                textoProgreso.textContent = `Renderizando página ${pagina} de ${totalPaginas} | ${esMovil ? "1 columna" : "2 columnas"}`;
+            }
+            
+            // Crear wrapper para la página
+            const wrapperPagina = document.createElement("div");
+            wrapperPagina.className = "page-wrapper";
+            wrapperPagina.style.width = "100%";
+            wrapperPagina.style.display = "flex";
+            wrapperPagina.style.justifyContent = "center";
+            wrapperPagina.style.alignItems = "flex-start";
+            
+            if (!esMovil) {
+                wrapperPagina.style.maxWidth = "750px";
+                wrapperPagina.style.margin = "0 auto";
+            }
+            
+            contenedor.appendChild(wrapperPagina);
+            
+            // Renderizar página actual
+            await renderizarPagina(pdf, pagina, wrapperPagina, esMovil);
+            
+            // Pequeña liberación de UI cada 3 páginas para mejor rendimiento
+            if (pagina % 3 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+            
+            console.log(`✅ Página ${pagina}/${totalPaginas} renderizada`);
+        }
+        
+        console.log(`✅ DOCUMENTO COMPLETO: ${totalPaginas} páginas renderizadas`);
+        
+        tareaActual = null;
+        cargando = false;
+        loader.style.display = "none";
+        
+        // Registrar en logs
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+            await supabaseClient.from("logs").insert({
+                user_email: user.email,
+                pet: configuracion.pets[indiceMascota].nombre,
+                area: `${areaSeleccionada} | ${totalPaginas} PÁGINAS`,
+                fecha: new Date().toISOString()
+            });
+        }
+        
+    } catch (error) {
+        console.error("❌ Error cargando PDF:", error);
+        
+        // Limpieza en caso de error
+        if (documentoPDF) {
+            try { documentoPDF.destroy(); } catch (e) {}
+            documentoPDF = null;
+        }
+        
+        tareaActual = null;
+        cargando = false;
+        
+        const loader = document.getElementById("loader");
+        if (loader) loader.style.display = "none";
+        
+        showAlert(`❌ Error al cargar documento: ${error.message}`, "error");
+    }
+}
 
-    }catch(err){
+// ===============================
+// 🔍 MANEJAR ZOOM CON RUEDA (Ctrl + Rueda)
+// ===============================
+async function manejarZoomRueda(evento) {
+    if (!evento.ctrlKey) return;
+    
+    evento.preventDefault();
+    
+    if (timeoutZoom) return;
+    
+    if (evento.deltaY < 0) {
+        escalaActual += 0.1;
+    } else {
+        escalaActual -= 0.1;
+    }
+    
+    // ✅ Limitar escala a 1.8 máximo (seguro para Brave)
+    escalaActual = Math.min(Math.max(0.5, escalaActual), 1.8);
+    
+    timeoutZoom = setTimeout(async () => {
+        if (documentoPDF || totalPaginas > 0) {
+            await cargarPDF();
+        }
+        timeoutZoom = null;
+    }, 150);
+}
 
-        console.error(
-            "❌ Error verificando sesión:",
-            err
-        );
+// ===============================
+// 📱 MANEJAR ZOOM CON PINCH (Táctil)
+// ===============================
+async function manejarZoomPinch(evento) {
+    if (evento.touches.length !== 2) return;
+    
+    evento.preventDefault();
+    
+    const dx = evento.touches[0].clientX - evento.touches[1].clientX;
+    const dy = evento.touches[0].clientY - evento.touches[1].clientY;
+    const distancia = Math.sqrt(dx * dx + dy * dy);
+    
+    if (!distanciaInicial) {
+        distanciaInicial = distancia;
+        return;
+    }
+    
+    const diferencia = distancia - distanciaInicial;
+    
+    if (Math.abs(diferencia) < 10) return;
+    
+    escalaActual += diferencia * 0.001;
+    
+    // ✅ Limitar escala a 1.8 máximo
+    escalaActual = Math.min(Math.max(0.5, escalaActual), 1.8);
+    
+    distanciaInicial = distancia;
+    
+    if (timeoutZoom) return;
+    
+    timeoutZoom = setTimeout(async () => {
+        if (documentoPDF || totalPaginas > 0) {
+            await cargarPDF();
+        }
+        timeoutZoom = null;
+    }, 150);
+}
 
-    }finally{
+// ===============================
+// 🖱️ INICIALIZAR EVENTOS DE ZOOM
+// ===============================
+function inicializarZoom() {
+    const contenedorPDF = document.getElementById("pdfContainer");
+    
+    if (!contenedorPDF) return;
+    
+    contenedorPDF.addEventListener("wheel", manejarZoomRueda, { passive: false });
+    contenedorPDF.addEventListener("touchmove", manejarZoomPinch, { passive: false });
+}
 
+document.addEventListener("touchend", () => {
+    distanciaInicial = null;
+});
+
+// ===============================
+// ⏱️ CONTROL DE INACTIVIDAD
+// ===============================
+function actualizarActividad() {
+    if (timeoutActividad) return;
+    
+    timeoutActividad = setTimeout(() => {
+        ultimaActividad = Date.now();
+        timeoutActividad = null;
+    }, 300);
+}
+
+// Suscribir eventos de actividad
+document.addEventListener("click", actualizarActividad, { passive: true });
+document.addEventListener("touchstart", actualizarActividad, { passive: true });
+document.addEventListener("keydown", actualizarActividad, { passive: true });
+
+// Verificar inactividad periódicamente
+setInterval(async () => {
+    if (verificandoSesion) return;
+    
+    verificandoSesion = true;
+    
+    try {
+        const ahora = Date.now();
+        
+        if (ahora - ultimaActividad > TIEMPO_MAX_INACTIVIDAD) {
+            console.log("⏳ Sesión expirada por inactividad");
+            
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            await registrarSesionExpirada(user);
+            await supabaseClient.auth.signOut();
+            
+            showAlert("⏳ Sesión expirada por inactividad", "warning");
+            
+            setTimeout(() => {
+                window.location.href = "index.html";
+            }, 1500);
+        }
+        
+    } catch (error) {
+        console.error("❌ Error verificando sesión:", error);
+        
+    } finally {
         verificandoSesion = false;
     }
-
 }, 30000);
 
-// 🚫 BLOQUEOS
-document.addEventListener(
-    "contextmenu",
-    e => e.preventDefault()
-);
+// ===============================
+// 🔒 BLOQUEOS DE SEGURIDAD
+// ===============================
+// Bloquear clic derecho
+document.addEventListener("contextmenu", evento => evento.preventDefault());
 
-// 🚫 F12
-document.addEventListener(
-    "keydown",
-    e => {
+// Bloquear teclas de desarrollador
+document.addEventListener("keydown", evento => {
+    const teclasBloqueadas = ["F12", "F5"];
+    
+    const combinacionesBloqueadas = [
+        (evento.ctrlKey && evento.shiftKey && (evento.key === "I" || evento.key === "i")),
+        (evento.ctrlKey && (evento.key === "u" || evento.key === "U")),
+        (evento.ctrlKey && (evento.key === "r" || evento.key === "R")),
+        (evento.ctrlKey && (evento.key === "s" || evento.key === "S"))
+    ];
+    
+    if (teclasBloqueadas.includes(evento.key) || combinacionesBloqueadas.some(cond => cond)) {
+        evento.preventDefault();
+        return false;
+    }
+});
 
-        if(
-            e.key === "F12" ||
+// Prevenir zoom con gestos en iOS
+if ("ongesturestart" in window) {
+    document.addEventListener("gesturestart", (evento) => {
+        evento.preventDefault();
+    }, { passive: false });
+}
 
-            (
-                e.ctrlKey &&
-                e.shiftKey &&
-                e.key === "I"
-            ) ||
-            
-            (
-                e.ctrlKey &&
-                e.key === "u"
-            )
-        ){
-            e.preventDefault();
+// ===============================
+// 🚀 INICIALIZACIÓN DE LA APLICACIÓN
+// ===============================
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        // Verificar sesión nuevamente al cargar
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        
+        if (!session) {
+            showAlert("⏳ Sesión expirada", "error");
+            setTimeout(() => {
+                window.location.href = "index.html";
+            }, 1500);
+            return;
         }
-    }
-);
-
-// ===============================
-// 🚀 INIT
-// ===============================
-document.addEventListener(
-    "DOMContentLoaded",
-    async () => {
-
-        try{
-
-            const device_id =
-                localStorage.getItem(
-                    "device_id"
-                );
-
-            const {
-                data:{ session }
-            } = await supabaseClient
-                .auth
-                .getSession();
-
-            if(!session){
-
-                showAlert(
-                    "⏳ Sesión expirada",
-                    "error"
-                );
-
-                setTimeout(() => {
-
-                    window.location.href =
-                        "index.html";
-
-                }, 1500);
-
-                return;
-            }
-
-            const user =
-                session.user;
-
-            const expiresAt =
-                session.expires_at * 1000;
-
-            if(Date.now() > expiresAt){
-
-                await registrarSesionExpirada(
-                    user
-                );
-
-                await supabaseClient
-                    .auth
-                    .signOut();
-
-                showAlert(
-                    "⏳ Sesión expirada por inactividad",
-                    "error"
-                );
-
-                setTimeout(() => {
-
-                    window.location.href =
-                        "index.html";
-
-                }, 1500);
-
-                return;
-            }
-
-            if(!device_id){
-
-                console.warn(
-                    "⚠️ device_id no encontrado"
-                );
-            }
-
-            await loadConfig();
-            initPDFZoom();
-
-            // Escuchar cambios de tamaño de ventana
-            let resizeTimeout;
-            window.addEventListener('resize', function() {
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(function() {
-                    if (pdfDocument && !cargandoPDF) {
-                        console.log("🔄 Re-renderizando por cambio de tamaño");
-                        loadPDF();
-                    }
-                }, 300);
-            });
-
-        }catch(err){
-
-            console.error(
-                "❌ Error init:",
-                err
-            );
-
-            showAlert(
-                "❌ Error iniciando visor",
-                "error"
-            );
+        
+        const usuario = session.user;
+        const expiraEn = session.expires_at * 1000;
+        
+        if (Date.now() > expiraEn) {
+            await registrarSesionExpirada(usuario);
+            await supabaseClient.auth.signOut();
+            showAlert("⏳ Sesión expirada", "error");
+            setTimeout(() => {
+                window.location.href = "index.html";
+            }, 1500);
+            return;
         }
+        
+        // Cargar configuración e inicializar
+        await cargarConfiguracion();
+        inicializarZoom();
+        
+        console.log("🚀 Visor PETS 3.2 CORREGIDO - SIN TOKEN - SIN DESTROY");
+        console.log("📐 Grid: 2 columnas (escritorio) | 1 columna (móvil)");
+        console.log("🔒 Escala máxima: 1.8 (seguro para Brave)");
+        
+    } catch (error) {
+        console.error("❌ Error inicializando visor:", error);
+        showAlert("❌ Error iniciando el visor", "error");
     }
-);
-
-// ===============================
-// 🔍 ZOOM PDF
-// ===============================
-
-let initialDistance = null;
-let zoomTimeout = null;
-
-// ===============================
-// 🚀 INIT PDF EVENTS
-// ===============================
-function initPDFZoom(){
-
-    const pdfContainer =
-        document.getElementById(
-            "pdfContainer"
-        );
-
-    if(!pdfContainer){
-        return;
-    }
-
-    pdfContainer.addEventListener(
-        "wheel",
-        handleWheelZoom,
-        { passive:false }
-    );
-
-    pdfContainer.addEventListener(
-        "touchmove",
-        handlePinchZoom,
-        { passive:false }
-    );
-}
-
-// ===============================
-// 🖥️ WHEEL ZOOM
-// ===============================
-async function handleWheelZoom(e){
-
-    if(!e.ctrlKey){
-        return;
-    }
-
-    e.preventDefault();
-
-    if(zoomTimeout){
-        return;
-    }
-
-    if(e.deltaY < 0){
-
-        pdfScale += 0.1;
-
-    }else{
-
-        pdfScale -= 0.1;
-    }
-
-    pdfScale =
-        Math.min(
-            Math.max(0.6, pdfScale),
-            3
-        );
-
-    zoomTimeout =
-        setTimeout(async () => {
-
-            await loadPDF();
-
-            zoomTimeout = null;
-
-        }, 120);
-}
-
-// ===============================
-// 📱 PINCH ZOOM
-// ===============================
-async function handlePinchZoom(e){
-
-    if(e.touches.length !== 2){
-        return;
-    }
-
-    e.preventDefault();
-
-    const dx =
-        e.touches[0].clientX -
-        e.touches[1].clientX;
-
-    const dy =
-        e.touches[0].clientY -
-        e.touches[1].clientY;
-
-    const distance =
-        Math.sqrt(dx * dx + dy * dy);
-
-    if(!initialDistance){
-
-        initialDistance = distance;
-
-        return;
-    }
-
-    const diff =
-        distance - initialDistance;
-
-    if(Math.abs(diff) < 8){
-        return;
-    }
-
-    pdfScale += diff * 0.0008;
-
-    pdfScale =
-        Math.min(
-            Math.max(0.6, pdfScale),
-            3
-        );
-
-    initialDistance = distance;
-
-    if(zoomTimeout){
-        return;
-    }
-
-    zoomTimeout =
-        setTimeout(async () => {
-
-            await loadPDF();
-
-            zoomTimeout = null;
-
-        }, 150);
-}
-
-// ===============================
-// 📱 TOUCH END
-// ===============================
-document.addEventListener(
-    "touchend",
-    () => {
-
-        initialDistance = null;
-    }
-);
+});
