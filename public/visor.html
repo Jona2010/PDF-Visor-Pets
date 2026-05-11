@@ -1,78 +1,81 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover" />
-<title>INTELLIALL | Visor PETS Profesional</title>
-<meta name="description" content="Visor profesional de documentos PETS con acceso controlado y visualización optimizada" />
-<meta name="robots" content="noindex, nofollow" />
-<meta name="theme-color" content="#020617" />
-<link rel="preconnect" href="https://cdn.jsdelivr.net" />
-<link rel="preconnect" href="https://xnkpjgrxgwkfhgrrzwhu.supabase.co" />
-<link rel="preconnect" href="https://cdnjs.cloudflare.com" />
-<link rel="stylesheet" href="styles_visor.css" />
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>INTELLIALL | Visor PETS</title>
+
+<meta name="robots" content="noindex, nofollow">
+
+<link rel="stylesheet" href="styles_visor.css">
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+</script>
+
 </head>
+
 <body>
 
-<div id="initialLoader" class="initial-loader">
-    <div class="initial-spinner">
-        <div class="initial-spinner-ring"></div>
-        <div class="initial-spinner-ring"></div>
+<!-- HEADER -->
+<header class="header">
+
+    <div class="logo">
+        📄 INTELLIALL
     </div>
-    <p>🔐 Inicializando visor seguro...</p>
-    <small>Intelliall PETS Viewer</small>
-</div>
 
-<div class="app" id="app">
-    <header class="header">
-        <div class="logo">
-            <span>📄 INTELLIALL</span>
-            <small>Professional PETS Viewer</small>
-        </div>
-        <div class="controls-bar">
-            <select id="petSelect" aria-label="Seleccionar mascota"></select>
-            <select id="areaSelect" aria-label="Seleccionar área"></select>
-        </div>
-        <div class="actions">
-            <button onclick="logout()" class="btn-logout" aria-label="Cerrar sesión">🚪 Salir</button>
-        </div>
-    </header>
+    <div class="controls-bar">
 
-    <!-- ✅ CORREGIDO: main separado del loader para que no comparta overflow -->
-    <main class="viewer">
-        <div id="pdfContainer" class="pdf-view"></div>
-    </main>
+        <select id="petSelect">
+            <option>Cargando PETS...</option>
+        </select>
 
-    <!-- ✅ CORREGIDO: loader fuera del main para que no interfiera con el scroll del contenido -->
-    <div id="loader" class="loader">
-        <div class="spinner"></div>
-        <p>📄 Cargando documento...</p>
-        <small id="progressText">Procesando páginas | 2 columnas</small>
+        <select id="areaSelect">
+            <option>Seleccionar área</option>
+        </select>
+
     </div>
+
+    <button class="btn-logout" onclick="logout()">
+        Salir
+    </button>
+
+</header>
+
+<!-- VISOR -->
+<main class="viewer">
+
+    <div id="pdfContainer" class="pdf-view"></div>
+
+</main>
+
+<!-- LOADER -->
+<div id="loader" class="loader">
+
+    <div class="spinner"></div>
+
+    <p id="progressText">
+        Cargando documento...
+    </p>
+
 </div>
 
-<div id="connectionStatus" class="connection-indicator">
-    <span></span>
-    <span>Conectado</span>
-</div>
+<!-- ALERTAS -->
+<div id="alertContainer"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
-
-<!-- ✅ CORREGIDO: primero el worker ANTES de cargar pdf.min.js -->
-<script>
-    window.pdfjsWorkerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js";
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.js"></script>
-
-<!-- ✅ CORREGIDO: configurar worker después de cargar la librería -->
-<script>
-    if (window.pdfjsLib) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js";
-    }
-</script>
-
+<!-- JS PRINCIPAL -->
 <script src="visor.js"></script>
 
 </body>
+
 </html>
