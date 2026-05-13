@@ -1101,9 +1101,6 @@ function applyZoom(){
 
     container.style.transformOrigin =
         "top center";
-
-    container.style.transition =
-        "transform 0.12s ease-out";
 }
 
 // ===============================
@@ -1144,14 +1141,12 @@ function initPDFZoom(){
 // ===============================
 function handleWheelZoom(e){
 
-    // 🚫 SOLO CTRL + WHEEL
     if(!e.ctrlKey){
         return;
     }
 
     e.preventDefault();
 
-    // 🚫 EVITAR SPAM
     if(zoomTimeout){
         return;
     }
@@ -1173,7 +1168,7 @@ function handleWheelZoom(e){
             3
         );
 
-    // 🚀 THROTTLE
+    // 🚀 ZOOM CSS
     zoomTimeout =
         setTimeout(() => {
 
@@ -1206,7 +1201,6 @@ function handlePinchZoom(e){
     const distance =
         Math.sqrt(dx * dx + dy * dy);
 
-    // 🚀 INIT
     if(!initialDistance){
 
         initialDistance = distance;
@@ -1217,7 +1211,6 @@ function handlePinchZoom(e){
     const diff =
         distance - initialDistance;
 
-    // 🚫 FILTRAR MICRO MOVIMIENTOS
     if(Math.abs(diff) < 8){
         return;
     }
@@ -1234,11 +1227,11 @@ function handlePinchZoom(e){
 
     initialDistance = distance;
 
-    // 🚫 EVITAR SPAM
     if(zoomTimeout){
         return;
     }
 
+    // 🚀 ZOOM CSS
     zoomTimeout =
         setTimeout(() => {
 

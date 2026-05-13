@@ -158,7 +158,9 @@ body{
 
     align-items:start;
     padding:24px;
-    transition: opacity 0.2s ease;
+    transition:
+    opacity 0.2s ease,
+    transform 0.12s ease-out;
     transform-origin: top center;
     will-change: transform;
 }
