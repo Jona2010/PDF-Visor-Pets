@@ -3,78 +3,177 @@
 
 <head>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- ========================================
+         CONFIGURACIÓN GENERAL
+    ========================================= -->
+    <meta charset="UTF-8">
 
-<title>INTELLIALL | Visor PETS</title>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
 
-<meta name="robots" content="noindex, nofollow">
+    <title>INTELLIALL | Visor PETS</title>
 
-<link rel="stylesheet" href="styles_visor.css">
+    <meta name="robots"
+          content="noindex, nofollow">
 
-<!-- Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- ========================================
+         CSS
+    ========================================= -->
+    <link rel="stylesheet"
+          href="styles_visor.css">
 
-<!-- PDF.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- ========================================
+         PRELOAD PDF WORKER
+         Mejora carga en Chrome/Edge
+    ========================================= -->
+    <link rel="modulepreload"
+      href="pdf.worker.min.js">
 
-<script>
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-</script>
+    <!-- ========================================
+         SUPABASE
+    ========================================= -->
+    <script defer
+        src="https://unpkg.com/@supabase/supabase-js@2">
+    </script>
 
+    <!-- ========================================
+         PDF.JS LOCAL
+         IMPORTANTE:
+         Debes tener estos archivos:
+
+         /js/pdf/pdf.min.js
+         /js/pdf/pdf.worker.min.js
+    ========================================= -->
+    <script defer
+        crossorigin="anonymous"
+        src="pdf.min.js">
+    </script>
+
+    <!-- ========================================
+         CONFIGURACIÓN PDF.JS
+    ========================================= -->
+    <script defer>
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            () => {
+
+                console.log(
+                    "=== INICIALIZANDO PDF.JS ==="
+                );
+
+                // VALIDAR PDF.JS
+                if (typeof pdfjsLib === "undefined") {
+
+                    console.error(
+                        "❌ PDF.js no cargó"
+                    );
+
+                    alert(
+                        "Error cargando PDF.js"
+                    );
+
+                    return;
+                }
+
+                // WORKER LOCAL
+                pdfjsLib.GlobalWorkerOptions.workerSrc =
+                    "pdf.worker.min.js";
+
+                console.log(
+                    "✅ PDF.js listo"
+                );
+
+            }
+        );
+
+    </script>
+
+    <!-- ========================================
+         JS PRINCIPAL
+    ========================================= -->
+    <script defer src="visor.js"></script>
 </head>
 
 <body>
 
-<!-- HEADER -->
-<header class="header">
+    <!-- ========================================
+         HEADER
+    ========================================= -->
+    <header class="header">
 
-    <div class="logo">
-        📄 INTELLIALL
+        <!-- LOGO -->
+        <div class="logo">
+
+            📄 INTELLIALL
+
+        </div>
+
+        <!-- CONTROLES -->
+        <div class="controls-bar">
+
+            <!-- SELECT PET -->
+            <select id="petSelect">
+
+                <option>
+                    Cargando PETS...
+                </option>
+
+            </select>
+
+            <!-- SELECT ÁREA -->
+            <select id="areaSelect">
+
+                <option>
+                    Seleccionar área
+                </option>
+
+            </select>
+
+        </div>
+
+        <!-- BOTÓN SALIR -->
+        <button id="logoutBtn"
+                class="btn-logout">
+
+            Salir
+
+        </button>
+
+    </header>
+
+    <!-- ========================================
+         VISOR PDF
+    ========================================= -->
+    <main class="viewer">
+
+        <div id="pdfContainer"
+             class="pdf-view">
+
+        </div>
+
+    </main>
+
+    <!-- ========================================
+         LOADER
+    ========================================= -->
+    <div id="loader"
+         class="loader">
+
+        <div class="spinner"></div>
+
+        <p id="progressText">
+
+            Cargando documento...
+
+        </p>
+
     </div>
 
-    <div class="controls-bar">
-
-        <select id="petSelect">
-            <option>Cargando PETS...</option>
-        </select>
-
-        <select id="areaSelect">
-            <option>Seleccionar área</option>
-        </select>
-
-    </div>
-
-    <button class="btn-logout" onclick="logout()">
-        Salir
-    </button>
-
-</header>
-
-<!-- VISOR -->
-<main class="viewer">
-
-    <div id="pdfContainer" class="pdf-view"></div>
-
-</main>
-
-<!-- LOADER -->
-<div id="loader" class="loader">
-
-    <div class="spinner"></div>
-
-    <p id="progressText">
-        Cargando documento...
-    </p>
-
-</div>
-
-<!-- ALERTAS -->
-<div id="alertContainer"></div>
-
-<!-- JS PRINCIPAL -->
-<script src="visor.js"></script>
+    <!-- ========================================
+         ALERTAS
+    ========================================= -->
+    <div id="alertContainer"></div>
 
 </body>
 

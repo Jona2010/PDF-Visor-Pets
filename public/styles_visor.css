@@ -144,7 +144,7 @@ body{
 ========================= */
 .viewer{
     flex:1;
-    overflow-y:auto;
+    overflow:auto;
     background:#0f172a;
 }
 
@@ -157,8 +157,10 @@ body{
     gap:24px;
 
     align-items:start;
-
     padding:24px;
+    transition: opacity 0.2s ease;
+    transform-origin: top center;
+    will-change: transform;
 }
 
 /* =========================
