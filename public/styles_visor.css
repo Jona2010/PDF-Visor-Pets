@@ -9,8 +9,11 @@
 
 html,
 body{
+
     width:100%;
+
     min-height:100%;
+
     overflow-x:hidden;
     overflow-y:auto;
 
@@ -146,10 +149,10 @@ body{
    VISOR
 ========================= */
 .viewer{
-    width:100%;
-    min-height:100vh;
 
-    overflow-x:hidden;
+    width:100%;
+
+    overflow-x:auto;
     overflow-y:visible;
 
     background:#0f172a;
@@ -159,6 +162,7 @@ body{
    GRID PDF
 ========================= */
 .pdf-view{
+
     width:100%;
 
     display:grid;
@@ -173,18 +177,29 @@ body{
     padding:24px;
 
     overflow:visible;
+
+    height:auto;
+
+    min-height:auto;
+
+    transform-origin:top center;
 }
 
 /* =========================
    WRAPPER PÁGINAS
 ========================= */
 .page-wrapper{
+
     width:100%;
+
     max-width:100%;
-    overflow:hidden;
+
+    overflow:visible;
 
     display:flex;
+
     justify-content:center;
+
     align-items:flex-start;
 }
 
@@ -204,8 +219,6 @@ body{
     border-radius:8px;
 
     box-shadow:0 4px 12px rgba(0,0,0,.15);
-
-    contain:layout paint size;
 }
 
 /* =========================

@@ -35,8 +35,9 @@ let cargandoPDF = false; // ✅ AGREGAR ESTA LÍNEA
         // 🚫 SIN SESIÓN
         if(!session){
 
-            window.location.href =
-                "index.html";
+            window.location.replace(
+                "index.html"
+            );
 
             return;
         }
@@ -60,8 +61,9 @@ let cargandoPDF = false; // ✅ AGREGAR ESTA LÍNEA
                 "warning"
             );
 
-            window.location.href =
-                "index.html";
+            window.location.replace(
+                "index.html"
+            );
 
             return;
         }
@@ -73,8 +75,9 @@ let cargandoPDF = false; // ✅ AGREGAR ESTA LÍNEA
             err
         );
 
-        window.location.href =
-            "index.html";
+        window.location.replace(
+            "index.html"
+        );
     }
 
 })();
@@ -193,8 +196,9 @@ async function logout(){
         );
     }
 
-    window.location.href =
-        "index.html";
+    window.location.replace(
+        "index.html"
+    );
 }
 
 // 🔄 ACTUALIZAR ÁREAS
@@ -934,8 +938,9 @@ setInterval(async () => {
             // 🚀 REDIRECT ÚNICO
             setTimeout(() => {
 
-                window.location.href =
-                    "index.html";
+                window.location.replace(
+                    "index.html"
+                );
 
             }, 1800);
         }
@@ -1015,8 +1020,9 @@ document.addEventListener(
 
                 setTimeout(() => {
 
-                    window.location.href =
-                        "index.html";
+                    window.location.replace(
+                        "index.html"
+                    );
 
                 }, 1500);
 
@@ -1047,8 +1053,9 @@ document.addEventListener(
 
                 setTimeout(() => {
 
-                    window.location.href =
-                        "index.html";
+                    window.location.replace(
+                        "index.html"
+                    );
 
                 }, 1500);
 
@@ -1067,6 +1074,16 @@ document.addEventListener(
             await loadConfig();
 
             initPDFZoom();
+
+            // 🚪 BOTÓN LOGOUT
+            document
+                .getElementById(
+                    "logoutBtn"
+                )
+                ?.addEventListener(
+                    "click",
+                    logout
+                );
 
         }catch(err){
 
@@ -1102,11 +1119,19 @@ function applyZoom(){
         return;
     }
 
+    // 🔍 SCALE VISUAL
     container.style.transform =
         `scale(${pdfScale})`;
 
     container.style.transformOrigin =
         "top center";
+
+    // 🔥 ANCHO REAL
+    container.style.minWidth =
+        `${pdfScale * 100}%`;
+
+    container.style.margin =
+        "0 auto";
 }
 
 // ===============================

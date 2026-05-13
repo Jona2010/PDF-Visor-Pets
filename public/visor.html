@@ -50,42 +50,84 @@
     </script>
 
     <!-- ========================================
-         CONFIGURACIÓN PDF.JS
+        CONFIGURACIÓN PDF.JS
     ========================================= -->
     <script defer>
 
-        document.addEventListener(
-            "DOMContentLoaded",
-            () => {
+    document.addEventListener(
+        "DOMContentLoaded",
+        () => {
 
-                console.log(
-                    "=== INICIALIZANDO PDF.JS ==="
+            console.log(
+                "=== INICIALIZANDO PDF.JS ==="
+            );
+
+            // 🚫 VALIDAR PDF.JS
+            if(typeof pdfjsLib === "undefined"){
+
+                console.error(
+                    "❌ PDF.js no cargó"
                 );
 
-                // VALIDAR PDF.JS
-                if (typeof pdfjsLib === "undefined") {
+                // 🚨 ERROR VISUAL
+                document.body.innerHTML = `
 
-                    console.error(
-                        "❌ PDF.js no cargó"
-                    );
+                    <div style="
+                        min-height:100vh;
+                        display:flex;
+                        justify-content:center;
+                        align-items:center;
+                        background:#020617;
+                        color:white;
+                        font-family:sans-serif;
+                        text-align:center;
+                        padding:24px;
+                    ">
 
-                    alert(
-                        "Error cargando PDF.js"
-                    );
+                        <div>
 
-                    return;
-                }
+                            <h2 style="
+                                margin-bottom:12px;
+                                color:#ef4444;
+                            ">
+                                Error cargando PDF.js
+                            </h2>
 
-                // WORKER LOCAL
-                pdfjsLib.GlobalWorkerOptions.workerSrc =
-                    "pdf.worker.min.js";
+                            <p>
+                                Verifica que:
+                            </p>
 
-                console.log(
-                    "✅ PDF.js listo"
-                );
+                            <br>
 
+                            <p>
+                                • pdf.min.js exista
+                            </p>
+
+                            <p>
+                                • pdf.worker.min.js exista
+                            </p>
+
+                            <p>
+                                • El servidor esté funcionando
+                            </p>
+
+                        </div>
+
+                    </div>
+                `;
+
+                return;
             }
-        );
+
+            // ✅ WORKER LOCAL
+            pdfjsLib.GlobalWorkerOptions.workerSrc =
+                "pdf.worker.min.js";
+
+            console.log(
+                "✅ PDF.js listo"
+            );
+        }
+    );
 
     </script>
 
