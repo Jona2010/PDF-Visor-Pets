@@ -118,7 +118,7 @@ async function diagnosticarNavegador() {
 // ===============================
 const supabaseClient = supabase.createClient(
     "https://xnkpjgrxgwkfhgrrzwhu.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhua3BqZ3J4Z3drZmhncnJ6d2h1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjY5NTAsImV4cCI6MjA5MTk0Mjk1MH0.XPvMGOe5ajGzFZRD4aQ9imGZ1BixN0Ht-8I9o0iGb8I"
+    "eyJhbGciOiJIUzI1NiIsR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhua3BqZ3J4Z3drZmhncnJ6d2h1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjY5NTAsImV4cCI6MjA5MTk0Mjk1MH0.XPvMGOe5ajGzFZRD4aQ9imGZ1BixN0Ht-8I9o0iGb8I"
 );
 
 let config = null;
@@ -933,6 +933,10 @@ document.addEventListener(
     async () => {
 
         try{
+            
+            // 🔍 EJECUTAR DIAGNÓSTICO AL INICIO
+            const diagnostico = await diagnosticarNavegador();
+            console.log("📊 Resultado diagnóstico:", diagnostico);
 
             // 🔐 DEVICE
             const device_id =
