@@ -648,12 +648,18 @@ async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
         const page = await pdf.getPage(pageNum);
         
         // 📏 CÁLCULO ESCALA OPTIMIZADO
-        const containerWidth = container.clientWidth;
-        const baseViewport = page.getViewport({ scale: 1 });
-        
-        let scale = modoMovil 
-            ? ((window.innerWidth - 20) / baseViewport.width)
-            : (containerWidth * 0.95 / baseViewport.width);
+        const baseViewport =
+            page.getViewport({ scale: 1 });
+
+        // 📏 ANCHO REAL
+        const availableWidth = modoMovil
+            ? window.innerWidth - 32
+            : (window.innerWidth / 2) - 60;
+
+        // 🔍 ESCALA REAL
+        let scale =
+            availableWidth /
+            baseViewport.width;
 
         const devicePixelRatio = modoMovil ? (window.devicePixelRatio || 2) : 1.5;
         let finalScale = Math.min(scale * devicePixelRatio, 2.5); // ✅ LÍMITE
