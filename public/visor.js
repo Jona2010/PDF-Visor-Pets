@@ -1,4 +1,119 @@
 // ===============================
+// 🔍 DIAGNÓSTICO RÁPIDO DE NAVEGADOR
+// ===============================
+async function diagnosticarNavegador() {
+    console.log("%c=== DIAGNÓSTICO DE NAVEGADOR ===", "color: blue; font-size: 16px; font-weight: bold");
+    console.log("📱 Navegador:", navigator.userAgent);
+    console.log("🕒 Fecha/Hora:", new Date().toLocaleString());
+    
+    // Detectar navegador específico
+    const ua = navigator.userAgent;
+    const isChrome = ua.includes("Chrome") && !ua.includes("Edg") && !ua.includes("Brave");
+    const isEdge = ua.includes("Edg");
+    const isBrave = navigator.brave?.isBrave ? await navigator.brave.isBrave() : false;
+    const isFirefox = ua.includes("Firefox");
+    const isSafari = ua.includes("Safari") && !ua.includes("Chrome");
+    
+    console.log("🔍 Navegador detectado:", 
+        isBrave ? "Brave" : 
+        isEdge ? "Edge" : 
+        isChrome ? "Chrome" : 
+        isFirefox ? "Firefox" : 
+        isSafari ? "Safari" : 
+        "Desconocido"
+    );
+    
+    // Verificar PDF.js
+    console.log("📚 PDF.js disponible:", typeof pdfjsLib !== 'undefined');
+    if (typeof pdfjsLib !== 'undefined') {
+        console.log("⚙️ Worker configurado:", pdfjsLib.GlobalWorkerOptions?.workerSrc || "No configurado");
+        console.log("📦 Versión PDF.js:", pdfjsLib.version || "Desconocida");
+    }
+    
+    // Verificar Supabase
+    console.log("🗄️ Supabase cliente disponible:", !!supabaseClient);
+    
+    // Probar fetch a Supabase
+    try {
+        console.log("🔄 Probando conexión a Supabase...");
+        const test = await fetch("https://xnkpjgrxgwkfhgrrzwhu.supabase.co", {
+            method: 'HEAD',
+            mode: 'cors'
+        });
+        console.log("✅ Supabase accesible - Status:", test.status);
+    } catch(e) {
+        console.log("❌ Supabase bloqueado:", e.message);
+        console.log("   Posible causa: CORS, bloqueador de rastreadores o VPN");
+    }
+    
+    // Probar CDN de PDF.js
+    try {
+        console.log("🔄 Probando CDN de PDF.js...");
+        const cdnTest = await fetch("https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js", {
+            method: 'HEAD'
+        });
+        console.log("✅ CDN accesible - Status:", cdnTest.status);
+    } catch(e) {
+        console.log("❌ CDN bloqueado:", e.message);
+        console.log("   Solución: Usar worker local o CDN alternativo");
+    }
+    
+    // Verificar almacenamiento local
+    try {
+        localStorage.setItem("test", "test");
+        localStorage.removeItem("test");
+        console.log("💾 LocalStorage: Disponible");
+    } catch(e) {
+        console.log("❌ LocalStorage: Bloqueado -", e.message);
+    }
+    
+    // Verificar WebGL/Canvas
+    try {
+        const canvas = document.createElement("canvas");
+        const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        console.log("🎨 WebGL:", gl ? "Disponible" : "No disponible (puede afectar renderizado)");
+    } catch(e) {
+        console.log("❌ WebGL: Error -", e.message);
+    }
+    
+    // Memoria del navegador (si está disponible)
+    if (performance.memory) {
+        console.log("💾 Memoria JS:", Math.round(performance.memory.jsHeapSizeLimit / 1048576), "MB límite");
+        console.log("   Uso actual:", Math.round(performance.memory.usedJSHeapSize / 1048576), "MB");
+    } else {
+        console.log("💾 API de memoria no disponible en este navegador");
+    }
+    
+    console.log("%c=== FIN DIAGNÓSTICO ===", "color: blue; font-size: 16px; font-weight: bold");
+    
+    // Mostrar alerta visual si es Brave
+    if (isBrave) {
+        showAlert(
+            "⚠️ Brave detectado: Para ver PDFs correctamente, desactive 'Shields' (escudo) para este sitio",
+            "warning"
+        );
+    }
+    
+    // Mostrar advertencia si es Chrome con memoria limitada
+    if (isChrome && performance.memory && performance.memory.jsHeapSizeLimit < 500 * 1048576) {
+        showAlert(
+            "⚠️ Chrome con memoria limitada: Algunas páginas pueden no cargarse correctamente",
+            "warning"
+        );
+    }
+    
+    return {
+        isChrome,
+        isEdge,
+        isBrave,
+        isFirefox,
+        isSafari,
+        pdfjsAvailable: typeof pdfjsLib !== 'undefined',
+        supabaseAvailable: !!supabaseClient
+    };
+}
+
+// ===============================
 // 🔐 CONFIGURACIÓN SUPABASE (UNA SOLA VEZ)
 // ===============================
 const supabaseClient = supabase.createClient(
