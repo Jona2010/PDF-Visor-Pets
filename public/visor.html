@@ -10,6 +10,9 @@
 
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
+    
+    <meta name="theme-color"
+      content="#020617">    
 
     <title>INTELLIALL | Visor PETS</title>
 
@@ -26,7 +29,7 @@
          PRELOAD PDF WORKER
          Mejora carga en Chrome/Edge
     ========================================= -->
-    <link rel="modulepreload"
+    <link rel="preload"
       href="pdf.worker.min.js">
 
     <!-- ========================================
@@ -52,82 +55,75 @@
     <!-- ========================================
         CONFIGURACIÓN PDF.JS
     ========================================= -->
-    <script defer>
+    <script>
 
-    document.addEventListener(
-        "DOMContentLoaded",
-        () => {
-
-            console.log(
-                "=== INICIALIZANDO PDF.JS ==="
-            );
-
-            // 🚫 VALIDAR PDF.JS
-            if(typeof pdfjsLib === "undefined"){
-
-                console.error(
-                    "❌ PDF.js no cargó"
-                );
-
-                // 🚨 ERROR VISUAL
-                document.body.innerHTML = `
-
-                    <div style="
-                        min-height:100vh;
-                        display:flex;
-                        justify-content:center;
-                        align-items:center;
-                        background:#020617;
-                        color:white;
-                        font-family:sans-serif;
-                        text-align:center;
-                        padding:24px;
-                    ">
-
-                        <div>
-
-                            <h2 style="
-                                margin-bottom:12px;
-                                color:#ef4444;
-                            ">
-                                Error cargando PDF.js
-                            </h2>
-
-                            <p>
-                                Verifica que:
-                            </p>
-
-                            <br>
-
-                            <p>
-                                • pdf.min.js exista
-                            </p>
-
-                            <p>
-                                • pdf.worker.min.js exista
-                            </p>
-
-                            <p>
-                                • El servidor esté funcionando
-                            </p>
-
-                        </div>
-
-                    </div>
-                `;
-
-                return;
-            }
-
-            // ✅ WORKER LOCAL
-            pdfjsLib.GlobalWorkerOptions.workerSrc =
-                "pdf.worker.min.js";
-
-            console.log(
-                "✅ PDF.js listo"
-            );
-        }
+    console.log(
+        "=== INICIALIZANDO PDF.JS ==="
     );
+
+    // 🚫 VALIDAR PDF.JS
+    if(typeof pdfjsLib === "undefined"){
+
+        console.error(
+            "❌ PDF.js no cargó"
+        );
+
+        document.body.innerHTML = `
+
+            <div style="
+                min-height:100vh;
+                display:flex;
+                justify-content:center;
+                align-items:center;
+                background:#020617;
+                color:white;
+                font-family:sans-serif;
+                text-align:center;
+                padding:24px;
+            ">
+
+                <div>
+
+                    <h2 style="
+                        margin-bottom:12px;
+                        color:#ef4444;
+                    ">
+                        Error cargando PDF.js
+                    </h2>
+
+                    <p>
+                        Verifica que:
+                    </p>
+
+                    <br>
+
+                    <p>
+                        • pdf.min.js exista
+                    </p>
+
+                    <p>
+                        • pdf.worker.min.js exista
+                    </p>
+
+                    <p>
+                        • El servidor esté funcionando
+                    </p>
+
+                </div>
+
+            </div>
+        `;
+
+    }else{
+
+        // ✅ WORKER LOCAL
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            "pdf.worker.min.js";
+
+        console.log(
+            "✅ PDF.js listo"
+        );
+    }
 
     </script>
 

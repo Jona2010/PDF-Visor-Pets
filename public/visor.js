@@ -13,37 +13,45 @@ let pdfScale = 1;
 // 🔒 EVITAR MÚLTIPLES CARGAS PDF
 // 🚀 CONTROL RENDER PDF
 let renderToken = 0;
-
+// 🚪 CONTROL LOGOUT
+let cerrandoSesion = false;
 let currentLoadingTask = null;
 
-let cargandoPDF = false; // ✅ AGREGAR ESTA LÍNEA
+// 📄 PDF ACTUAL
+let pdfDocument = null;
+
+let cargandoPDF = false;
 
 // ===============================
 // 🔐 VALIDAR SESIÓN GOOGLE
 // ===============================
+async function validarSesionInicial(){
 
-(async () => {
+    const redirectLogin = () => {
+
+        window.location.replace(
+            "index.html"
+        );
+    };
 
     try{
 
         const {
-            data:{ session }
+            data:{ session },
+            error
         } = await supabaseClient
             .auth
             .getSession();
 
-        // 🚫 SIN SESIÓN
-        if(!session){
+        if(error || !session){
 
-            window.location.replace(
-                "index.html"
-            );
+            redirectLogin();
 
-            return;
+            return null;
         }
 
         const email =
-            session.user.email || "";
+            session?.user?.email || "";
 
         // 🔒 SOLO CORPORATIVOS
         if(
@@ -61,12 +69,16 @@ let cargandoPDF = false; // ✅ AGREGAR ESTA LÍNEA
                 "warning"
             );
 
-            window.location.replace(
-                "index.html"
-            );
+            setTimeout(() => {
 
-            return;
+                redirectLogin();
+
+            }, 1200);
+
+            return null;
         }
+
+        return session;
 
     }catch(err){
 
@@ -75,12 +87,11 @@ let cargandoPDF = false; // ✅ AGREGAR ESTA LÍNEA
             err
         );
 
-        window.location.replace(
-            "index.html"
-        );
-    }
+        redirectLogin();
 
-})();
+        return null;
+    }
+}
 
 // ===============================
 // 📄 CARGAR CONFIG
@@ -88,21 +99,63 @@ let cargandoPDF = false; // ✅ AGREGAR ESTA LÍNEA
 
 async function loadConfig(){
 
+    // ⏳ TIMEOUT FETCH
+    const controller =
+        new AbortController();
+
+    const timeout =
+        setTimeout(() => {
+
+            controller.abort();
+
+        }, 10000);
+
     try{
 
         const res =
-            await fetch("config.json");
+            await fetch(
+                "config.json",
+                {
+                    cache:"no-store",
+                    signal:
+                        controller.signal
+                }
+            );
 
+        clearTimeout(timeout);
+
+        // 🚫 ERROR HTTP
         if(!res.ok){
 
             throw new Error(
-                "No se pudo cargar config.json"
+                `HTTP ${res.status}`
             );
         }
 
-        config = await res.json();
+        // 📄 JSON
+        const json =
+            await res.json();
 
-        loadPDFList();
+        // 🚫 VALIDAR
+        if(
+            !json ||
+            typeof json.bucket !== "string" ||
+            json.bucket.trim() === "" ||
+            !Array.isArray(
+                json.pets
+            )
+        ){
+
+            throw new Error(
+                "Config inválida"
+            );
+        }
+
+        // ✅ CONFIG GLOBAL
+        config = json;
+
+        // 🚀 LOAD LIST
+        await loadPDFList();
 
     }catch(err){
 
@@ -119,7 +172,7 @@ async function loadConfig(){
 }
 
 // 📄 CARGAR LISTA PDF
-function loadPDFList(){
+async function loadPDFList(){
 
     try{
 
@@ -128,47 +181,82 @@ function loadPDFList(){
                 "petSelect"
             );
 
-        if(
-            !config ||
-            !config.pets ||
-            !Array.isArray(config.pets)
-        ){
+        // 🚫 VALIDAR DOM
+        if(!petSelect){
 
-            console.error(
-                "❌ Config inválida"
+            throw new Error(
+                "petSelect no encontrado"
             );
-
-            return;
         }
 
-        // 🔥 LIMPIAR
+        // 🚫 VALIDAR CONFIG
+        if(
+            !config ||
+            !Array.isArray(
+                config.pets
+            )
+        ){
+
+            throw new Error(
+                "Config inválida"
+            );
+        }
+
+        // 🧹 LIMPIAR
         petSelect.innerHTML = "";
 
+        // ✅ FILTRAR PETS VÁLIDOS
+
+        const validPets = config.pets
+            .map((pet, index) => ({ pet, index }))
+            .filter(({ pet }) =>
+                pet &&
+                typeof pet.nombre === "string" &&
+                pet.nombre.trim() !== "" &&
+                pet.archivos &&
+                typeof pet.archivos === "object"
+            );
+
+        // 🚫 SIN PETS
+        if(validPets.length === 0){
+
+            throw new Error(
+                "No hay PETS válidos"
+            );
+        }
+
         // 🔥 OPTIONS
-        config.pets.forEach((pet, index) => {
+        validPets.forEach(({ pet, index }) => {
 
             const option =
                 document.createElement(
                     "option"
                 );
 
-            option.value = index;
+            option.value =
+                index;
 
             option.textContent =
                 pet.nombre;
 
-            petSelect.appendChild(option);
+            petSelect.appendChild(
+                option
+            );
         });
 
-        // 🔥 DEFAULT
+        // ✅ DEFAULT
         petSelect.selectedIndex = 0;
 
-        // 🚫 EVITAR LISTENERS DUPLICADOS
+        // 🚫 EVITAR DUPLICADOS
         petSelect.onchange =
             updateAreas;
 
-        // 🔥 INICIAL
-        updateAreas();
+        // 🚀 ESPERAR REPAINT
+        requestAnimationFrame(() => {
+
+            updateAreas();
+
+        });
 
     }catch(err){
 
@@ -176,14 +264,55 @@ function loadPDFList(){
             "❌ Error loadPDFList:",
             err
         );
+
+        showAlert(
+            "❌ Error cargando lista PDF",
+            "error"
+        );
     }
 }
 
 // 🚪 LOGOUT
 async function logout(){
 
+    // 🚫 EVITAR DOBLE LOGOUT
+    if(cerrandoSesion){
+        return;
+    }
+
+    cerrandoSesion = true;
+
     try{
 
+        // 🧹 CANCELAR PDF
+        try{
+
+            if(currentLoadingTask){
+
+                await currentLoadingTask.destroy();
+
+                currentLoadingTask = null;
+            }
+
+            if(pdfDocument){
+
+                pdfDocument.cleanup();
+
+                pdfDocument = null;
+            }
+
+        }catch(cleanErr){
+
+            console.warn(
+                "⚠️ Error limpiando PDF:",
+                cleanErr
+            );
+        }
+
+        // 🔓 RESET
+        cargandoPDF = false;
+
+        // 🚪 LOGOUT SUPABASE
         await supabaseClient
             .auth
             .signOut();
@@ -194,12 +323,18 @@ async function logout(){
             "❌ Error logout:",
             err
         );
-    }
 
-    window.location.replace(
-        "index.html"
-    );
+    }finally{
+
+        // 🚀 REDIRECT
+        window.location.replace(
+            "index.html"
+        );
+    }
 }
+
+// 🔄 CONTROL UPDATE AREAS
+let updateAreasTimeout = null;
 
 // 🔄 ACTUALIZAR ÁREAS
 function updateAreas(){
@@ -216,33 +351,64 @@ function updateAreas(){
                 "areaSelect"
             );
 
-        const petIndex =
-            petSelect.value;
+        if(!petSelect || !areaSelect){
 
-        // 🚫 VALIDAR
+            throw new Error(
+                "Selects no encontrados"
+            );
+        }
+
+        const petIndex =
+            Number(
+                petSelect.value
+            );
+
+        const area =
+            areaSelect.value;
+
+        // 🚫 VALIDAR CONFIG
         if(
             !config ||
-            !config.pets ||
+            !Array.isArray(
+                config.pets
+            ) ||
             !config.pets[petIndex]
         ){
             return;
         }
 
-        // 🔥 LIMPIAR
+        const pet =
+            config.pets[petIndex];
+
+        // 🚫 VALIDAR ARCHIVOS
+        if(
+            !pet.archivos ||
+            typeof pet.archivos !==
+            "object"
+        ){
+            return;
+        }
+
+        // 🧹 LIMPIAR
         areaSelect.innerHTML = "";
 
         const areas =
-            config.pets[petIndex]
-            .archivos;
+            Object.keys(
+                pet.archivos
+            );
 
-        // 🚫 VALIDAR
-        if(!areas){
+        // 🚫 SIN ÁREAS
+        if(areas.length === 0){
+
+            console.warn(
+                "⚠️ Sin áreas"
+            );
+
             return;
         }
 
         // 🔥 OPTIONS
-        Object.keys(areas)
-        .forEach(area => {
+        areas.forEach(area => {
 
             const option =
                 document.createElement(
@@ -259,26 +425,24 @@ function updateAreas(){
             );
         });
 
-        // 🔥 DEFAULT
+        // ✅ DEFAULT
         areaSelect.selectedIndex = 0;
 
         // 🚫 EVITAR DUPLICADOS
         areaSelect.onchange = () => {
 
-            if(!cargandoPDF){
+            // 🚫 DEBOUNCE
+            clearTimeout(
+                updateAreasTimeout
+            );
 
-                loadPDF();
-            }
+            updateAreasTimeout =
+                setTimeout(() => {
+
+                    loadPDF();
+
+                }, 80);
         };
-
-        // 🔥 SOLO UNA CARGA
-        if(!cargandoPDF){
-
-            requestAnimationFrame(() => {
-
-                loadPDF();
-            });
-        }
 
     }catch(err){
 
@@ -292,53 +456,82 @@ function updateAreas(){
 // 📱 DETECTAR MÓVIL
 function esMovil(){
 
-    return window.innerWidth <= 768;
+    return (
+
+        window.innerWidth <= 768 ||
+
+        (
+            "ontouchstart" in window &&
+            window.innerWidth <= 1024
+        ) ||
+
+        /Android|iPhone|iPad|iPod/i
+        .test(
+            navigator.userAgent
+        )
+    );
 }
+
+// 🚫 EVITAR DUPLICADOS
+let registrandoSesionExpirada = false;
 
 // ⏳ REGISTRAR SESIÓN EXPIRADA
 async function registrarSesionExpirada(user){
 
+    // 🚫 EVITAR DUPLICADOS
+    if(registrandoSesionExpirada){
+        return;
+    }
+
+    registrandoSesionExpirada = true;
+
     try{
 
-        // 🔔 ALERTA
-        await supabaseClient
-            .from("alerts")
-            .insert({
+        // 🚫 VALIDAR USER
+        if(!user?.email){
 
-                user_id:
-                    user?.id || null,
+            console.warn(
+                "⚠️ Usuario inválido"
+            );
 
-                email:
-                    user?.email ||
-                    "Desconocido",
+            return;
+        }
 
-                message:
-                    `⏳ Sesión expirada: ${
-                        user?.email || ""
-                    }`,
+        // 🚀 INSERTS PARALELOS
+        await Promise.allSettled([
 
-                nivel:"warning",
+            // 🔔 ALERTA
+            supabaseClient
+                .from("alerts")
+                .insert({
 
-                visto:false,
+                    user_id:
+                        user.id,
 
-                created_at:
-                    new Date()
-                    .toISOString()
-            });
+                    email:
+                        user.email,
 
-        // 📊 LOG
-        await supabaseClient
-            .from("logs")
-            .insert({
+                    message:
+                        `⏳ Sesión expirada: ${user.email}`,
 
-                user_email:
-                    user?.email ||
-                    "Desconocido",
+                    nivel:"warning",
 
-                pet:"SESSION",
+                    visto:false
+                }),
 
-                area:"Sesión expirada"
-            });
+            // 📊 LOG
+            supabaseClient
+                .from("logs")
+                .insert({
+
+                    user_email:
+                        user.email,
+
+                    pet:"SESSION",
+
+                    area:"Sesión expirada"
+                })
+        ]);
 
     }catch(err){
 
@@ -346,18 +539,19 @@ async function registrarSesionExpirada(user){
             "❌ Error sesión expirada:",
             err
         );
+
+    }finally{
+
+        registrandoSesionExpirada = false;
     }
 }
 
-// 📥 CARGAR PDF (VERSIÓN ESTABLE PRODUCCIÓN)
+/// 📥 CARGAR PDF
 async function loadPDF(){
 
-    // 🚫 EVITAR CARGAS DUPLICADAS
-    if(cargandoPDF){
-        return;
-    }
+    const token =
+        ++renderToken;
 
-    // 🔒 BLOQUEAR
     cargandoPDF = true;
 
     try{
@@ -372,63 +566,147 @@ async function loadPDF(){
                 "loader"
             );
 
-        const petIndex =
+        const petSelect =
             document.getElementById(
                 "petSelect"
-            ).value;
+            );
 
-        const area =
+        const areaSelect =
             document.getElementById(
                 "areaSelect"
-            ).value;
+            );
 
-        // 🔒 VALIDAR CONFIG
+        // 🚫 VALIDAR DOM
+        if(
+            !container ||
+            !loader ||
+            !petSelect ||
+            !areaSelect
+        ){
+
+            throw new Error(
+                "DOM PDF no encontrado"
+            );
+        }
+
+        const petIndex =
+            Number(
+                petSelect.value
+            );
+
+        const area =
+            areaSelect.value;
+
+        // 🚫 VALIDAR CONFIG
         if(
             !config ||
-            !config.pets ||
+            typeof config.bucket !== "string" ||
+            config.bucket.trim() === "" ||
+            !Array.isArray(
+                config.pets
+            ) ||
             !config.pets[petIndex]
         ){
 
-            cargandoPDF = false;
             return;
         }
 
-        // 🔒 VALIDAR ARCHIVO
+        // 🚫 VALIDAR ARCHIVO
         if(
             !config.pets[petIndex]
-            .archivos[area]
+                ?.archivos?.[area]
         ){
 
-            cargandoPDF = false;
             return;
         }
 
         const fileName =
             config.pets[petIndex]
-            .archivos[area];
+                .archivos[area];
 
-        // 🚀 TOKEN NUEVO
-        const token = ++renderToken;
+        // =====================================
+        // 🧹 LIMPIAR PDF ANTERIOR
+        // =====================================
+        try{
 
-        container.style.opacity = "0";
+            if(currentLoadingTask){
 
-        container.innerHTML = "";
+                await currentLoadingTask
+                    .destroy();
+
+                currentLoadingTask =
+                    null;
+            }
+
+            if(pdfDocument){
+
+                try{
+
+                    await pdfDocument
+                        .destroy();
+
+                }catch(cleanErr){
+
+                    console.warn(
+                        "⚠️ Error destruyendo PDF:",
+                        cleanErr
+                    );
+                }
+
+                pdfDocument =
+                    null;
+            }
+
+        }catch(cancelErr){
+
+            console.warn(
+                "⚠️ Error cancelando PDF:",
+                cancelErr
+            );
+        }
+
+        // =====================================
+        // 🧹 LIMPIAR GPU CANVASES
+        // =====================================
+        const oldCanvases =
+            container.querySelectorAll(
+                "canvas"
+            );
+
+        oldCanvases.forEach(canvas => {
+
+            canvas.width =
+                0;
+
+            canvas.height =
+                0;
+        });
+
+        // =====================================
+        // 🧹 LIMPIAR UI
+        // =====================================
+        container.style.opacity =
+            "0";
+
+        container.innerHTML =
+            "";
 
         requestAnimationFrame(() => {
 
-            container.style.opacity = "1";
-
+            container.style.opacity =
+                "1";
         });
 
         container.classList.remove(
             "loaded"
         );
 
-        loader.style.display = "flex";
+        loader.style.display =
+            "flex";
 
-        currentLoadingTask = null;
-
-        // 🔐 GENERAR URL
+        // =====================================
+        // 🔐 GENERAR URL FIRMADA
+        // =====================================
         const {
             data,
             error
@@ -440,15 +718,14 @@ async function loadPDF(){
                 3600
             );
 
-        // 🚫 ERROR URL
-        if(error){
+        if(token !== renderToken){
+
+            return;
+        }
+
+        if(error || !data?.signedUrl){
 
             console.error(error);
-
-            loader.style.display =
-                "none";
-
-            cargandoPDF = false;
 
             showAlert(
                 "❌ Error cargando PDF",
@@ -458,13 +735,10 @@ async function loadPDF(){
             return;
         }
 
+        // =====================================
         // 🚫 VALIDAR PDF.JS
-        if(typeof pdfjsLib === "undefined"){
-
-            loader.style.display =
-                "none";
-
-            cargandoPDF = false;
+        // =====================================
+        if(typeof window.pdfjsLib === "undefined"){
 
             showAlert(
                 "❌ PDF.js no disponible",
@@ -474,50 +748,54 @@ async function loadPDF(){
             return;
         }
 
+        // =====================================
         // 🚀 CARGAR PDF
+        // =====================================
         currentLoadingTask =
-            pdfjsLib.getDocument({
+            window.pdfjsLib.getDocument({
 
-                url:data.signedUrl,
+                url:
+                    data.signedUrl,
 
-                verbosity:0,
+                verbosity:
+                    0,
 
-                disableAutoFetch:true,
+                disableAutoFetch:
+                    true,
 
-                disableStream:false,
+                disableStream:
+                    false,
 
-                disableRange:false,
+                disableRange:
+                    false,
 
-                rangeChunkSize:262144,
+                rangeChunkSize:
+                    262144,
 
-                // ✅ CMAPS LOCAL
-                cMapUrl:"cmaps/",
+                cMapUrl:
+                    "cmaps/",
 
-                cMapPacked:true,
+                cMapPacked:
+                    true,
 
-                // ✅ FUENTES PDF
                 standardFontDataUrl:
                     "standard_fonts/"
             });
 
-        // 📄 PDF
-        const pdf =
-            await currentLoadingTask.promise;
+        pdfDocument =
+            await currentLoadingTask
+                .promise;
 
-        // 🚫 TOKEN INVÁLIDO
+        currentLoadingTask =
+            null;
+
         if(token !== renderToken){
-
-            loader.style.display =
-                "none";
-
-            cargandoPDF = false;
 
             return;
         }
 
-        // 📄 TOTAL
         const totalPages =
-            pdf.numPages;
+            pdfDocument.numPages;
 
         console.log(
             `📄 PDF cargado: ${totalPages} páginas`
@@ -535,55 +813,64 @@ async function loadPDF(){
             i++
         ){
 
-            // 🚫 CANCELADO
             if(token !== renderToken){
-
-                loader.style.display =
-                    "none";
-
-                cargandoPDF = false;
 
                 return;
             }
 
-            // 🚀 RENDER
-            await renderSinglePage(
-                pdf,
-                i,
-                container,
-                modoMovil,
-                token
-            );
+            const pageElement =
+                await renderSinglePage(
+                    pdfDocument,
+                    i,
+                    modoMovil,
+                    token
+                );
 
-            // 🧹 DESCANSO MEMORIA
-            if(i % 5 === 0){
+            if(
+                pageElement &&
+                token === renderToken
+            ){
+
+                container.appendChild(
+                    pageElement
+                );
+            }
+
+            if(i === 1){
+
+                loader.style.display =
+                    "none";
+
+                container.classList.add(
+                    "loaded"
+                );
+            }
+
+            if(i % 4 === 0){
 
                 await new Promise(
                     resolve =>
                         setTimeout(
                             resolve,
-                            30
+                            16
                         )
-                );
-
-                console.log(
-                    `✅ ${i}/${totalPages}`
                 );
             }
         }
 
-        // ✅ UI FINAL
-        container.classList.add(
-            "loaded"
-        );
+        requestAnimationFrame(() => {
 
-        loader.style.display =
-            "none";
+            container.classList.add(
+                "loaded"
+            );
 
-        // 🔓 LIBERAR
-        cargandoPDF = false;
+            loader.style.display =
+                "none";
+        });
 
+        // =====================================
         // 👤 LOG
+        // =====================================
         try{
 
             const {
@@ -626,144 +913,329 @@ async function loadPDF(){
             err
         );
 
-        document
-            .getElementById(
-                "loader"
-            )
-            .style.display = "none";
-
-        // 🔓 LIBERAR
-        cargandoPDF = false;
-
-        currentLoadingTask = null;
-
         showAlert(
-            `❌ ${err.message}`,
+            "❌ Error cargando PDF",
             "error"
         );
+
+    }finally{
+
+        if(token === renderToken){
+
+            cargandoPDF =
+                false;
+
+            const loader =
+                document.getElementById(
+                    "loader"
+                );
+
+            if(loader){
+
+                loader.style.display =
+                    "none";
+            }
+        }
     }
 }
 
-// 🎯 FUNCIÓN RENDER PÁGINA INDIVIDUAL (OPTIMIZADA)
-async function renderSinglePage(pdf, pageNum, container, modoMovil, token) {
-    if (token !== renderToken) return null;
+// 🎯 RENDER PÁGINA INDIVIDUAL
+async function renderSinglePage(
+    pdf,
+    pageNum,
+    modoMovil,
+    token
+){
 
-    try {
-        const page = await pdf.getPage(pageNum);
-        
-        // 📏 CÁLCULO ESCALA OPTIMIZADO
+    // 🚫 TOKEN INVÁLIDO
+    if(token !== renderToken){
+        return null;
+    }
+
+    try{
+
+        // 📄 PAGE
+        const page =
+            await pdf.getPage(
+                pageNum
+            );
+
+        // 🚫 CANCELADO
+        if(token !== renderToken){
+
+            page.cleanup();
+
+            return null;
+        }
+
+        // =====================================
+        // 📏 VIEWPORT BASE
+        // =====================================
         const baseViewport =
-            page.getViewport({ scale: 1 });
+            page.getViewport({
+                scale:1
+            });
 
-        // 📏 ANCHO REAL
-        const availableWidth = modoMovil
-            ? window.innerWidth - 32
-            : (window.innerWidth / 2) - 60;
+        // =====================================
+        // 📏 ANCHO DISPONIBLE
+        // =====================================
+        const availableWidth =
+            modoMovil
+                ? window.innerWidth - 32
+                : (window.innerWidth / 2) - 60;
 
-        // 🔍 ESCALA REAL
+        // =====================================
+        // 🔍 ESCALA
+        // =====================================
         let scale =
             availableWidth /
             baseViewport.width;
 
-        const devicePixelRatio = modoMovil ? (window.devicePixelRatio || 2) : 1.5;
-        let finalScale = Math.min(scale * devicePixelRatio, 2.5); // ✅ LÍMITE
+        // 📱 DPR
+        const devicePixelRatio =
+            modoMovil
+                ? (
+                    window.devicePixelRatio || 2
+                )
+                : 1.5;
 
-        const viewport = page.getViewport({ scale: finalScale });
-        
-        // 🖼️ CANVAS OPTIMIZADO
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext(
-            "2d",
-            {
-                alpha:false,
-                desynchronized:true
-            }
-        );
-        
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
-        
-        canvas.style.width = `${Math.floor(viewport.width / devicePixelRatio)}px`;
-        canvas.style.height = `${Math.floor(viewport.height / devicePixelRatio)}px`;
+        // 🚫 LIMITE
+        const finalScale =
+            Math.min(
+                scale * devicePixelRatio,
+                2.2
+            );
+
+        // 📄 VIEWPORT FINAL
+        const viewport =
+            page.getViewport({
+                scale:finalScale
+            });
+
+        // =====================================
+        // 🖼️ CANVAS
+        // =====================================
+        const canvas =
+            document.createElement(
+                "canvas"
+            );
+
+        const ctx =
+            canvas.getContext(
+                "2d",
+                {
+                    alpha:false
+                }
+            );
+
+        // 🚫 CONTEXTO INVÁLIDO
+        if(!ctx){
+
+            page.cleanup();
+
+            return null;
+        }
+
+        // 📏 SIZE REAL
+        canvas.width =
+            Math.floor(
+                viewport.width
+            );
+
+        canvas.height =
+            Math.floor(
+                viewport.height
+            );
+
+        // 📏 SIZE VISUAL
+        canvas.style.width =
+            `${
+                Math.floor(
+                    viewport.width /
+                    devicePixelRatio
+                )
+            }px`;
+
+        canvas.style.height =
+            `${
+                Math.floor(
+                    viewport.height /
+                    devicePixelRatio
+                )
+            }px`;
+
+        // ✨ ANIMACIÓN
         canvas.style.opacity = "0";
-        canvas.style.transition = "opacity 0.3s ease";
-        canvas.style.willChange = "opacity";
 
+        canvas.style.transition =
+            "opacity .25s ease";
+
+        // =====================================
         // 📦 WRAPPER
-        const pageWrapper = document.createElement("div");
-        pageWrapper.className = "page-wrapper";
-        pageWrapper.appendChild(canvas);
-        container.appendChild(pageWrapper);
+        // =====================================
+        const pageWrapper =
+            document.createElement(
+                "div"
+            );
 
+        pageWrapper.className =
+            "page-wrapper";
+
+        pageWrapper.appendChild(
+            canvas
+        );
+
+        // =====================================
         // 🎨 RENDER
-        const renderTask = page.render({
-            canvasContext: ctx,
-            viewport: viewport
-        });
+        // =====================================
+        const renderTask =
+            page.render({
+
+                canvasContext:ctx,
+
+                viewport:viewport
+            });
 
         await renderTask.promise;
-        renderTask.cancel = null;
+
+        // 🚫 CANCELADO
+        if(token !== renderToken){
+
+            canvas.width = 0;
+            canvas.height = 0;
+
+            page.cleanup();
+
+            return null;
+        }
+
+        // 🧹 CLEAN PAGE
         page.cleanup();
-        
-        // ✨ ANIMACIÓN
+
+        // ✨ SHOW
         requestAnimationFrame(() => {
-            canvas.style.opacity = "1";
+
+            canvas.style.opacity =
+                "1";
+
         });
 
-        return pageNum;
-        
-    } catch (err) {
-        console.warn(`⚠️ Error página ${pageNum}:`, err);
+        // ✅ DEVOLVER ELEMENTO
+        return pageWrapper;
+
+    }catch(err){
+
+        console.warn(
+            `⚠️ Error página ${pageNum}:`,
+            err
+        );
+
         return null;
     }
 }
 
+// 🚨 ALERTA GLOBAL
+let currentAlert = null;
+
+// 🚨 SHOW ALERT
 function showAlert(
     message,
     type = "error"
 ){
 
-    // 🚫 ELIMINAR ALERTAS ANTERIORES
-    document
-        .querySelectorAll(".custom-alert")
-        .forEach(el => el.remove());
+    // 🚫 VALIDAR BODY
+    if(!document.body){
+        return;
+    }
+
+    // 🚫 TYPES INVÁLIDOS
+    const validTypes = [
+        "error",
+        "success",
+        "warning"
+    ];
+
+    if(
+        !validTypes.includes(type)
+    ){
+        type = "error";
+    }
+
+    // 🚫 ELIMINAR ALERTA ANTERIOR
+    if(currentAlert){
+
+        currentAlert.remove();
+
+        currentAlert = null;
+    }
 
     // 🔥 CREAR
     const alert =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
     alert.className =
         `custom-alert ${type}`;
 
-    alert.textContent = message;
+    alert.textContent =
+        message;
 
-    document.body.appendChild(alert);
+    // 💾 GLOBAL
+    currentAlert = alert;
 
-    // 🚀 ANIMACIÓN SUAVE
+    // 🚀 APPEND
+    document.body.appendChild(
+        alert
+    );
+
+    // ✨ ANIMACIÓN
     requestAnimationFrame(() => {
 
-        alert.classList.add("show");
+        alert.classList.add(
+            "show"
+        );
     });
 
-    // ⏳ AUTO REMOVE
-    const removeTimer =
+    // ⏳ DURACIÓN
+    const ALERT_DURATION = 3000;
+
+    // ⏳ TRANSICIÓN
+    const ALERT_TRANSITION = 250;
+
+    // 🚀 REMOVE TIMER
+    const removeTimeout =
         setTimeout(() => {
 
-            alert.classList.remove("show");
+            alert.classList.remove(
+                "show"
+            );
 
-            // 🔥 ESPERAR TRANSICIÓN
-            setTimeout(() => {
+            // 🚀 ESPERAR CSS
+            const transitionTimeout =
+                setTimeout(() => {
 
-                if(alert.parentNode){
+                    if(
+                        alert.parentNode
+                    ){
 
-                    alert.remove();
-                }
+                        alert.remove();
+                    }
 
-                clearTimeout(removeTimer);
+                    // 🧹 LIMPIAR GLOBAL
+                    if(
+                        currentAlert === alert
+                    ){
 
-            }, 250);
+                        currentAlert = null;
+                    }
 
-        }, 3000);
+                }, ALERT_TRANSITION);
+
+        }, ALERT_DURATION);
+
+    // ✅ RETORNO ÚTIL
+    return alert;
 }
 
 // ===============================
@@ -771,116 +1243,96 @@ function showAlert(
 // ===============================
 
 // ⏱️ ÚLTIMA ACTIVIDAD
-let lastActivity = Date.now();
+let lastActivity =
+    Date.now();
+
+// ⏱️ THROTTLE ACTIVIDAD
+let lastActivityUpdate = 0;
 
 // ⏳ 10 MINUTOS
 const TIEMPO_MAX =
     10 * 60 * 1000;
-
-// 🚫 THROTTLE
-let activityTimeout = null;
 
 // ===============================
 // 🎯 ACTUALIZAR ACTIVIDAD
 // ===============================
 function actualizarActividad(){
 
-    // 🚫 EVITAR SPAM
-    if(activityTimeout){
+    const now =
+        Date.now();
+
+    // 🚫 THROTTLE 300ms
+    if(
+        now - lastActivityUpdate <
+        300
+    ){
         return;
     }
 
-    activityTimeout =
-        setTimeout(() => {
+    // ✅ UPDATE
+    lastActivity = now;
 
-            lastActivity = Date.now();
-
-            activityTimeout = null;
-
-        }, 300);
+    lastActivityUpdate = now;
 }
 
 // ===============================
-// 🎧 EVENTOS
+// 🎧 EVENTOS ACTIVIDAD
 // ===============================
 
+// 🖱️ TOUCH / MOUSE / PEN
 document.addEventListener(
-    "click",
+    "pointerdown",
     actualizarActividad,
-    { passive:true }
+    {
+        passive:true
+    }
 );
 
-document.addEventListener(
-    "touchstart",
-    actualizarActividad,
-    { passive:true }
-);
-
+// ⌨️ TECLADO
 document.addEventListener(
     "keydown",
     actualizarActividad,
-    { passive:true }
+    {
+        passive:true
+    }
 );
 
-// 🚫 NO USAR SCROLL GLOBAL
-// document.addEventListener("scroll", actualizarActividad);
+// 👁️ VOLVER A PESTAÑA
+document.addEventListener(
+    "visibilitychange",
+    () => {
 
-// ===============================
-// 🚨 REGISTRAR SESIÓN EXPIRADA
-// ===============================
-async function registrarSesionExpirada(user){
+        if(
+            document.visibilityState ===
+            "visible"
+        ){
 
-    if(!user){
-        return;
+            actualizarActividad();
+        }
     }
-
-    try{
-
-        await supabaseClient
-            .from("alerts")
-            .insert({
-
-                user_id:user.id,
-
-                email:user.email,
-
-                message:
-                    `⏳ Sesión expirada: ${user.email}`,
-
-                nivel:"warning",
-
-                visto:false
-            });
-
-        console.log(
-            "🚨 Sesión expirada registrada"
-        );
-
-    }catch(err){
-
-        console.error(
-            "❌ Error sesión expirada:",
-            err
-        );
-    }
-}
-
+);
 
 // ===============================
 // 📱 FIX MOBILE PINCH
 // ===============================
 
-// 🚫 SOLO SAFARI/iOS
+// 🚫 SOLO iOS SAFARI
 if("ongesturestart" in window){
 
     document.addEventListener(
         "gesturestart",
         (e) => {
 
-            e.preventDefault();
+            // 🚫 SOLO SI USAS ZOOM CUSTOM
+            if(pdfScale !== 1){
+
+                e.preventDefault();
+            }
 
         },
-        { passive:false }
+        {
+            passive:false
+        }
     );
 }
 
@@ -888,101 +1340,154 @@ if("ongesturestart" in window){
 // 🔐 VERIFICAR SESIÓN
 // ===============================
 
+// 🚫 EVITAR CHECKS DUPLICADOS
 let verificandoSesion = false;
 
-setInterval(async () => {
+// 🚫 EVITAR MÚLTIPLES EXPIRACIONES
+let sesionExpirada = false;
 
-    // 🚫 EVITAR MÚLTIPLES CHECKS
-    if(verificandoSesion){
-        return;
-    }
+// ⏱️ INTERVAL
+const sessionInterval =
+    setInterval(async () => {
 
-    verificandoSesion = true;
-
-    try{
-
-        const ahora = Date.now();
-
-        // ⏳ EXPIRADA
-        if(
-            ahora - lastActivity >
-            TIEMPO_MAX
-        ){
-
-            console.log(
-                "⏳ Sesión expirada"
-            );
-
-            const {
-                data:{ user }
-            } = await supabaseClient
-                .auth
-                .getUser();
-
-            // 🚨 REGISTRAR
-            await registrarSesionExpirada(
-                user
-            );
-
-            // 🔓 LOGOUT
-            await supabaseClient
-                .auth
-                .signOut();
-
-            // 🔔 ALERTA
-            showAlert(
-                "⏳ Sesión expirada por inactividad",
-                "error"
-            );
-
-            // 🚀 REDIRECT ÚNICO
-            setTimeout(() => {
-
-                window.location.replace(
-                    "index.html"
-                );
-
-            }, 1800);
+        // 🚫 YA EXPIRÓ
+        if(sesionExpirada){
+            return;
         }
 
-    }catch(err){
+        // 🚫 CHECK EN CURSO
+        if(verificandoSesion){
+            return;
+        }
 
-        console.error(
-            "❌ Error verificando sesión:",
-            err
-        );
+        verificandoSesion = true;
 
-    }finally{
+        try{
 
-        verificandoSesion = false;
-    }
+            const ahora =
+                Date.now();
 
-}, 30000);
+            // ⏳ EXPIRADA
+            if(
+                ahora - lastActivity >
+                TIEMPO_MAX
+            ){
 
-// 🚫 BLOQUEOS
-document.addEventListener(
-    "contextmenu",
-    e => e.preventDefault()
-);
+                sesionExpirada = true;
 
-// 🚫 F12
+                console.log(
+                    "⏳ Sesión expirada"
+                );
+
+                // 🛑 DETENER INTERVAL
+                clearInterval(
+                    sessionInterval
+                );
+
+                // 🔑 SESSION
+                const {
+                    data:{ session }
+                } = await supabaseClient
+                    .auth
+                    .getSession();
+
+                const user =
+                    session?.user;
+
+                // 🚨 REGISTRAR
+                await registrarSesionExpirada(
+                    user
+                );
+
+                // 🔓 LOGOUT
+                await supabaseClient
+                    .auth
+                    .signOut();
+
+                // 🔔 ALERTA
+                showAlert(
+                    "⏳ Sesión expirada por inactividad",
+                    "error"
+                );
+
+                // 🚀 REDIRECT
+                setTimeout(() => {
+
+                    window.location.replace(
+                        "index.html"
+                    );
+
+                }, 1800);
+            }
+
+        }catch(err){
+
+            console.error(
+                "❌ Error verificando sesión:",
+                err
+            );
+
+        }finally{
+
+            verificandoSesion = false;
+        }
+
+    }, 30000);
+
+// ===============================
+// 🚫 BLOQUEOS BÁSICOS
+// ===============================
+
+// 🚫 CLICK DERECHO SOLO EN PDF
+document
+    .getElementById(
+        "pdfContainer"
+    )
+    ?.addEventListener(
+        "contextmenu",
+        e => {
+
+            e.preventDefault();
+
+        }
+    );
+
+// 🚫 DEVTOOLS BÁSICO
 document.addEventListener(
     "keydown",
     e => {
 
+        const key =
+            e.key.toLowerCase();
+
+        // 🚫 F12
+        if(key === "f12"){
+
+            e.preventDefault();
+
+            return;
+        }
+
+        // 🚫 CTRL/CMD + SHIFT + I
         if(
-            e.key === "F12" ||
 
             (
-                e.ctrlKey &&
-                e.shiftKey &&
-                e.key === "I"
-            )
+                e.ctrlKey ||
+                e.metaKey
+            ) &&
+
+            e.shiftKey &&
+
+            key === "i"
         ){
+
             e.preventDefault();
         }
     }
 );
+
+// 🚫 EVITAR INIT DUPLICADO
+let appInicializada = false;
 
 // ===============================
 // 🚀 INIT
@@ -991,78 +1496,63 @@ document.addEventListener(
     "DOMContentLoaded",
     async () => {
 
-        try{
-            
-            // 🔍 EJECUTAR DIAGNÓSTICO AL INICIO
-            const diagnostico = await diagnosticarNavegador();
-            console.log("📊 Resultado diagnóstico:", diagnostico);
+        // 🚫 EVITAR DUPLICADOS
+        if(appInicializada){
+            return;
+        }
 
+        appInicializada = true;
+
+        try{
+
+            // =====================================
+            // 🔐 VALIDAR SESIÓN INICIAL
+            // =====================================
+            const session =
+                await validarSesionInicial();
+
+            // 🚫 SIN SESIÓN / REDIRECT EN PROCESO
+            if(!session){
+                return;
+            }
+
+            // =====================================
+            // 🔍 DIAGNÓSTICO BACKGROUND
+            // =====================================
+            if(typeof diagnosticarNavegador === "function"){
+
+                diagnosticarNavegador()
+                    .then(result => {
+
+                        console.log(
+                            "📊 Resultado diagnóstico:",
+                            result
+                        );
+
+                    })
+                    .catch(diagErr => {
+
+                        console.warn(
+                            "⚠️ Error diagnóstico:",
+                            diagErr
+                        );
+                    });
+
+            }else{
+
+                console.warn(
+                    "⚠️ diagnosticarNavegador no está definido"
+                );
+            }
+
+            // =====================================
             // 🔐 DEVICE
+            // =====================================
             const device_id =
                 localStorage.getItem(
                     "device_id"
                 );
 
-            // 🔑 SESSION
-            const {
-                data:{ session }
-            } = await supabaseClient
-                .auth
-                .getSession();
-
-            // 🚫 SIN SESIÓN
-            if(!session){
-
-                showAlert(
-                    "⏳ Sesión expirada",
-                    "error"
-                );
-
-                setTimeout(() => {
-
-                    window.location.replace(
-                        "index.html"
-                    );
-
-                }, 1500);
-
-                return;
-            }
-
-            const user =
-                session.user;
-
-            // ⏳ EXPIRADA
-            const expiresAt =
-                session.expires_at * 1000;
-
-            if(Date.now() > expiresAt){
-
-                await registrarSesionExpirada(
-                    user
-                );
-
-                await supabaseClient
-                    .auth
-                    .signOut();
-
-                showAlert(
-                    "⏳ Sesión expirada por inactividad",
-                    "error"
-                );
-
-                setTimeout(() => {
-
-                    window.location.replace(
-                        "index.html"
-                    );
-
-                }, 1500);
-
-                return;
-            }
-
-            // ⚠️ DEVICE
             if(!device_id){
 
                 console.warn(
@@ -1070,20 +1560,29 @@ document.addEventListener(
                 );
             }
 
+            // =====================================
             // 🚀 LOAD CONFIG
+            // =====================================
             await loadConfig();
 
+            // =====================================
+            // 🔍 INIT ZOOM
+            // =====================================
             initPDFZoom();
 
+            // =====================================
             // 🚪 BOTÓN LOGOUT
-            document
-                .getElementById(
+            // =====================================
+            const logoutBtn =
+                document.getElementById(
                     "logoutBtn"
-                )
-                ?.addEventListener(
-                    "click",
-                    logout
                 );
+
+            if(logoutBtn){
+
+                logoutBtn.onclick =
+                    logout;
+            }
 
         }catch(err){
 
@@ -1106,121 +1605,191 @@ document.addEventListener(
 
 let initialDistance = null;
 
-let zoomTimeout = null;
-
+// ===============================
+// 🔍 APPLY ZOOM
+// ===============================
 function applyZoom(){
 
-    const container =
+    const wrapper =
         document.getElementById(
-            "pdfContainer"
+            "pdfZoomWrapper"
         );
 
-    if(!container){
+    // 🚫 VALIDAR
+    if(!wrapper){
         return;
     }
 
-    // 🔍 SCALE VISUAL
-    container.style.transform =
+    // 🔒 LIMITES
+    pdfScale = Math.min(
+        Math.max(pdfScale, 0.6),
+        3
+    );
+
+    // 🚀 GPU
+    wrapper.style.willChange =
+        "transform";
+
+    // 🔍 SCALE
+    wrapper.style.transform =
         `scale(${pdfScale})`;
 
-    container.style.transformOrigin =
+    // 📍 ORIGEN
+    wrapper.style.transformOrigin =
         "top center";
 
-    // 🔥 ANCHO REAL
-    container.style.minWidth =
-        `${pdfScale * 100}%`;
-
-    container.style.margin =
-        "0 auto";
+    // 🚀 SMOOTH
+    wrapper.style.transition =
+        "transform .12s ease-out";
 }
+
+// 🚫 EVITAR INIT DUPLICADO
+let zoomEventsInitialized = false;
 
 // ===============================
 // 🚀 INIT PDF EVENTS
 // ===============================
 function initPDFZoom(){
 
-    const pdfContainer =
+    // 🚫 DUPLICADO
+    if(zoomEventsInitialized){
+        return;
+    }
+
+    zoomEventsInitialized = true;
+
+    const zoomWrapper =
         document.getElementById(
-            "pdfContainer"
+            "pdfZoomWrapper"
         );
 
-    if(!pdfContainer){
+    // 🚫 VALIDAR
+    if(!zoomWrapper){
         return;
     }
 
     // ===============================
-    // 🖥️ ZOOM RUEDA
+    // 🖥️ WHEEL ZOOM
     // ===============================
-    pdfContainer.addEventListener(
+    zoomWrapper.addEventListener(
         "wheel",
-        handleWheelZoom,
-        { passive:false }
+        (e) => {
+
+            // 🚫 SOLO CTRL/CMD
+            if(
+                !e.ctrlKey &&
+                !e.metaKey
+            ){
+                return;
+            }
+
+            handleWheelZoom(e);
+
+        },
+        {
+            passive:false
+        }
     );
 
     // ===============================
-    // 📱 PINCH
+    // 📱 PINCH ZOOM
     // ===============================
-    pdfContainer.addEventListener(
+    zoomWrapper.addEventListener(
         "touchmove",
         handlePinchZoom,
-        { passive:false }
+        {
+            passive:false
+        }
+    );
+
+    console.log(
+        "🔍 Zoom inicializado"
     );
 }
+
+// 🚫 RAF DUPLICADO
+let zoomAnimationFrame = null;
 
 // ===============================
 // 🖥️ WHEEL ZOOM
 // ===============================
 function handleWheelZoom(e){
 
-    if(!e.ctrlKey){
+    // 🚫 SOLO CTRL/CMD
+    if(
+        !e.ctrlKey &&
+        !e.metaKey
+    ){
         return;
     }
 
     e.preventDefault();
 
-    if(zoomTimeout){
-        return;
-    }
+    // ⏱️ ACTIVIDAD
+    actualizarActividad();
 
-    // 🔍 ZOOM
-    if(e.deltaY < 0){
+    // =====================================
+    // 🔍 DELTA SUAVE
+    // =====================================
+    const zoomIntensity =
+        0.0015;
 
-        pdfScale += 0.1;
+    pdfScale -=
+        e.deltaY *
+        zoomIntensity;
 
-    }else{
-
-        pdfScale -= 0.1;
-    }
-
+    // =====================================
     // 🔒 LIMITES
-    pdfScale =
-        Math.min(
-            Math.max(0.6, pdfScale),
-            3
-        );
+    // =====================================
+    pdfScale = Math.min(
+        Math.max(pdfScale, 0.6),
+        3
+    );
 
-    // 🚀 ZOOM CSS
-    zoomTimeout =
-        setTimeout(() => {
+    // =====================================
+    // 🚫 CANCELAR RAF ANTERIOR
+    // =====================================
+    if(zoomAnimationFrame){
+
+        cancelAnimationFrame(
+            zoomAnimationFrame
+        );
+    }
+
+    // =====================================
+    // 🚀 APPLY ZOOM
+    // =====================================
+    zoomAnimationFrame =
+        requestAnimationFrame(() => {
 
             applyZoom();
 
-            zoomTimeout = null;
-
-        }, 16);
+            zoomAnimationFrame =
+                null;
+        });
 }
+
+// 🚫 RAF DUPLICADO
+let pinchAnimationFrame = null;
 
 // ===============================
 // 📱 PINCH ZOOM
 // ===============================
 function handlePinchZoom(e){
 
+    // 🚫 SOLO 2 DEDOS
     if(e.touches.length !== 2){
         return;
     }
 
     e.preventDefault();
 
+    // ⏱️ ACTIVIDAD
+    actualizarActividad();
+
+    // =====================================
+    // 📏 DISTANCIA
+    // =====================================
     const dx =
         e.touches[0].clientX -
         e.touches[1].clientX;
@@ -1230,47 +1799,75 @@ function handlePinchZoom(e){
         e.touches[1].clientY;
 
     const distance =
-        Math.sqrt(dx * dx + dy * dy);
-
-    if(!initialDistance){
-
-        initialDistance = distance;
-
-        return;
-    }
-
-    const diff =
-        distance - initialDistance;
-
-    if(Math.abs(diff) < 8){
-        return;
-    }
-
-    // 🔍 ZOOM
-    pdfScale += diff * 0.0008;
-
-    // 🔒 LIMITES
-    pdfScale =
-        Math.min(
-            Math.max(0.6, pdfScale),
-            3
+        Math.sqrt(
+            dx * dx +
+            dy * dy
         );
 
-    initialDistance = distance;
+    // =====================================
+    // 🚀 INIT
+    // =====================================
+    if(initialDistance === null){
 
-    if(zoomTimeout){
+        initialDistance =
+            distance;
+
         return;
     }
 
-    // 🚀 ZOOM CSS
-    zoomTimeout =
-        setTimeout(() => {
+    // =====================================
+    // 🔍 DIFF
+    // =====================================
+    const diff =
+        distance -
+        initialDistance;
+
+    // 🚫 MICRO MOVIMIENTOS
+    if(Math.abs(diff) < 4){
+        return;
+    }
+
+    // =====================================
+    // 🔍 ZOOM SUAVE
+    // =====================================
+    pdfScale +=
+        diff * 0.0005;
+
+    // =====================================
+    // 🔒 LIMITES
+    // =====================================
+    pdfScale = Math.min(
+        Math.max(pdfScale, 0.6),
+        3
+    );
+
+    // =====================================
+    // 💾 UPDATE DISTANCE
+    // =====================================
+    initialDistance =
+        distance;
+
+    // =====================================
+    // 🚫 CANCELAR RAF
+    // =====================================
+    if(pinchAnimationFrame){
+
+        cancelAnimationFrame(
+            pinchAnimationFrame
+        );
+    }
+
+    // =====================================
+    // 🚀 APPLY ZOOM
+    // =====================================
+    pinchAnimationFrame =
+        requestAnimationFrame(() => {
 
             applyZoom();
 
-            zoomTimeout = null;
-
-        }, 16);
+            pinchAnimationFrame =
+                null;
+        });
 }
 
 // ===============================
@@ -1278,8 +1875,26 @@ function handlePinchZoom(e){
 // ===============================
 document.addEventListener(
     "touchend",
-    () => {
+    (e) => {
 
-        initialDistance = null;
+        // 🚫 SI YA NO HAY 2 DEDOS
+        if(e.touches.length < 2){
+
+            initialDistance = null;
+        }
+
+        // 🚫 CANCELAR RAF
+        if(pinchAnimationFrame){
+
+            cancelAnimationFrame(
+                pinchAnimationFrame
+            );
+
+            pinchAnimationFrame =
+                null;
+        }
+    },
+    {
+        passive:true
     }
 );
