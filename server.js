@@ -130,7 +130,7 @@ app.get("/ping", (req, res) => {
 // =====================================
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "public/index.html"));
+    res.sendFile(path.join(__dirname, "public/visor.html"));
 });
 
 // =====================================
@@ -191,10 +191,15 @@ app.get("/visor", (req, res) => {
 
     if (req.session.rol !== "user") {
 
-        return res.redirect("/index.html");
+        return res.redirect("/");
     }
 
-    res.sendFile(path.join(__dirname, "public/visor.html"));
+    res.sendFile(
+        path.join(
+            __dirname,
+            "public/visor.html"
+        )
+    );
 });
 
 // =====================================
