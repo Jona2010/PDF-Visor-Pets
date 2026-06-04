@@ -3,216 +3,255 @@
 
 <head>
 
-    <!-- ========================================
-         CONFIGURACIÓN GENERAL
-    ========================================= -->
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-    
-    <meta name="theme-color"
-      content="#020617">    
+    <meta
+        name="viewport"
+        content="
+            width=device-width,
+            initial-scale=1.0,
+            maximum-scale=1.0,
+            user-scalable=no,
+            viewport-fit=cover
+        "
+    />
 
-    <title>INTELLIALL | Visor PETS</title>
+    <meta name="theme-color" content="#0d0f12" />
+    <meta name="color-scheme" content="dark" />
 
-    <meta name="robots"
-          content="noindex, nofollow">
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PETS Visor" />
 
-    <!-- ========================================
-         CSS
-    ========================================= -->
-    <link rel="stylesheet"
-          href="styles_visor.css">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta name="referrer" content="no-referrer" />
 
-    <!-- ========================================
-         PRELOAD PDF WORKER
-         Mejora carga en Chrome/Edge
-    ========================================= -->
-    <link rel="preload"
-      href="pdf.worker.min.js">
+    <!-- Favicon SVG inline (cuadrícula PETS teal) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d0f12'/%3E%3Crect x='4' y='4' width='11' height='11' rx='2.5' fill='%2300d2b4'/%3E%3Crect x='17' y='4' width='11' height='11' rx='2.5' fill='%2300d2b4' opacity='.5'/%3E%3Crect x='4' y='17' width='11' height='11' rx='2.5' fill='%2300d2b4' opacity='.5'/%3E%3Crect x='17' y='17' width='11' height='11' rx='2.5' fill='%2300d2b4' opacity='.25'/%3E%3C/svg%3E" />
+    <!-- Fallback PNG -->
+    <link rel="icon" type="image/png" href="favicon.png" />
 
-    <!-- ========================================
-         SUPABASE
-    ========================================= -->
-    <script defer
-        src="https://unpkg.com/@supabase/supabase-js@2">
-    </script>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-    <!-- ========================================
-         PDF.JS LOCAL
-         IMPORTANTE:
-         Debes tener estos archivos:
+    <link rel="stylesheet" href="visor.css" />
 
-         /js/pdf/pdf.min.js
-         /js/pdf/pdf.worker.min.js
-    ========================================= -->
-    <script defer
-        crossorigin="anonymous"
-        src="pdf.min.js">
-    </script>
+    <title>PETS — Visor de Procedimientos</title>
 
-    <!-- ========================================
-        CONFIGURACIÓN PDF.JS
-    ========================================= -->
-    <script>
-
-    console.log(
-        "=== INICIALIZANDO PDF.JS ==="
-    );
-
-    // 🚫 VALIDAR PDF.JS
-    if(typeof pdfjsLib === "undefined"){
-
-        console.error(
-            "❌ PDF.js no cargó"
-        );
-
-        document.body.innerHTML = `
-
-            <div style="
-                min-height:100vh;
-                display:flex;
-                justify-content:center;
-                align-items:center;
-                background:#020617;
-                color:white;
-                font-family:sans-serif;
-                text-align:center;
-                padding:24px;
-            ">
-
-                <div>
-
-                    <h2 style="
-                        margin-bottom:12px;
-                        color:#ef4444;
-                    ">
-                        Error cargando PDF.js
-                    </h2>
-
-                    <p>
-                        Verifica que:
-                    </p>
-
-                    <br>
-
-                    <p>
-                        • pdf.min.js exista
-                    </p>
-
-                    <p>
-                        • pdf.worker.min.js exista
-                    </p>
-
-                    <p>
-                        • El servidor esté funcionando
-                    </p>
-
-                </div>
-
-            </div>
-        `;
-
-    }else{
-
-        // ✅ WORKER LOCAL
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-            "pdf.worker.min.js";
-
-        console.log(
-            "✅ PDF.js listo"
-        );
-    }
-
-    </script>
-
-    <!-- ========================================
-         JS PRINCIPAL
-    ========================================= -->
-    <script defer src="visor.js"></script>
 </head>
 
 <body>
 
-    <!-- ========================================
-         HEADER
-    ========================================= -->
-    <header class="header">
+    <div id="app">
 
-        <!-- LOGO -->
-        <div class="logo">
+        <!-- ===========================
+             OVERLAY MÓVIL (cierra sidebar)
+        ============================ -->
+        <div id="sidebarOverlay" aria-hidden="true"></div>
 
-            📄 INTELLIALL
+        <!-- ===========================
+             SIDEBAR
+        ============================ -->
+        <aside id="sidebar" role="navigation" aria-label="Lista de PETs">
 
-        </div>
+            <!-- Header -->
+            <div id="sidebarHeader">
 
-        <!-- CONTROLES -->
-        <div class="controls-bar">
+                <div id="logoArea">
+                    <!-- Botón cerrar sidebar (móvil) -->
+                    <button
+                        id="closeSidebarBtn"
+                        aria-label="Cerrar menú"
+                        title="Cerrar menú"
+                    >
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <path d="M2 2L16 16M16 2L2 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
 
-            <!-- SELECT PET -->
-            <select id="petSelect">
+                    <div id="logoBrand">
+                        <div id="logoMark">
+                            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                                <rect x="1" y="1" width="9" height="9" rx="2.5" fill="currentColor" opacity="1"/>
+                                <rect x="12" y="1" width="9" height="9" rx="2.5" fill="currentColor" opacity="0.5"/>
+                                <rect x="1" y="12" width="9" height="9" rx="2.5" fill="currentColor" opacity="0.5"/>
+                                <rect x="12" y="12" width="9" height="9" rx="2.5" fill="currentColor" opacity="0.25"/>
+                            </svg>
+                        </div>
+                        <div id="logoText">
+                            <span id="logoTitle">PETS</span>
+                            <span id="logoSub">Procedimientos de Trabajo</span>
+                        </div>
+                    </div>
+                </div>
 
-                <option>
-                    Cargando PETS...
-                </option>
+                <!-- Buscador -->
+                <div id="searchWrap">
+                    <svg id="searchIcon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.4"/>
+                        <path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                    <input
+                        type="text"
+                        id="searchInput"
+                        placeholder="Buscar PET o área..."
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        aria-label="Buscar procedimientos"
+                    />
+                    <button id="searchClear" aria-label="Limpiar búsqueda" hidden>
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
 
-            </select>
+                <!-- Filtro rápido de áreas -->
+                <div id="areaFilterWrap">
+                    <div id="areaFilters" role="group" aria-label="Filtrar por área"></div>
+                </div>
 
-            <!-- SELECT ÁREA -->
-            <select id="areaSelect">
+            </div>
 
-                <option>
-                    Seleccionar área
-                </option>
+            <!-- Contador -->
+            <div id="petsCounter" aria-live="polite"></div>
 
-            </select>
+            <!-- Lista -->
+            <div id="petsList" role="list"></div>
 
-        </div>
+        </aside>
 
-        <!-- BOTÓN SALIR -->
-        <button id="logoutBtn"
-                class="btn-logout">
+        <!-- ===========================
+             ÁREA PRINCIPAL
+        ============================ -->
+        <main id="viewerArea">
 
-            Salir
+            <!-- Barra superior (móvil) -->
+            <div id="topBar">
+                <button
+                    id="mobileMenuBtn"
+                    aria-label="Abrir menú de PETs"
+                    aria-expanded="false"
+                    aria-controls="sidebar"
+                >
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </button>
 
-        </button>
+                <div id="topBarTitle">
+                    <span id="topBarPetName">Selecciona un PET</span>
+                    <span id="topBarArea"></span>
+                </div>
+            </div>
 
-    </header>
+            <!-- Toolbar flotante -->
+            <header id="toolbar" role="toolbar" aria-label="Controles del visor">
 
-    <!-- ========================================
-         VISOR PDF
-    ========================================= -->
-    <main class="viewer">
+                <!-- Navegación de páginas -->
+                <div id="pageNav">
+                    <button id="prevPage" title="Página anterior" aria-label="Página anterior">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div id="pageInfo">
+                        <input
+                            id="pageInput"
+                            type="number"
+                            min="1"
+                            inputmode="numeric"
+                            enterkeyhint="go"
+                            autocomplete="off"
+                            aria-label="Número de página"
+                            title="Ir a página"
+                        />
+                        <span id="pageSep">/</span>
+                        <span id="pageTotal">—</span>
+                    </div>
+                    <button id="nextPage" title="Página siguiente" aria-label="Página siguiente">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
 
-        <div id="pdfContainer"
-             class="pdf-view">
+                <!-- Divisor -->
+                <div class="toolbar-divider" aria-hidden="true"></div>
 
-        </div>
+                <!-- Zoom -->
+                <div id="zoomControls">
+                    <button id="zoomOut" title="Reducir zoom (Ctrl −)" aria-label="Reducir zoom">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <button id="zoomLabel" aria-label="Nivel de zoom actual" title="Click para restablecer zoom">100%</button>
+                    <button id="zoomIn" title="Aumentar zoom (Ctrl +)" aria-label="Aumentar zoom">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
 
-    </main>
+                <!-- Divisor -->
+                <div class="toolbar-divider" aria-hidden="true"></div>
 
-    <!-- ========================================
-         LOADER
-    ========================================= -->
-    <div id="loader"
-         class="loader">
+                <!-- Ajuste de ancho -->
+                <button id="fitWidth" title="Ajustar al ancho" aria-label="Ajustar PDF al ancho">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M2 8h12M2 5l3-3M2 5l3 3M14 11l-3 3M14 11l-3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
 
-        <div class="spinner"></div>
+            </header>
 
-        <p id="progressText">
+            <!-- Contenedor del PDF -->
+            <section id="viewerContainer" aria-label="Visor de PDF">
 
-            Cargando documento...
+                <!-- Estado vacío inicial -->
+                <div id="emptyState">
+                    <div id="emptyStateIcon">
+                        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                            <rect x="10" y="6" width="36" height="44" rx="4" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+                            <rect x="14" y="10" width="28" height="36" rx="3" stroke="currentColor" stroke-width="1" opacity="0.15"/>
+                            <path d="M18 20h20M18 26h20M18 32h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+                        </svg>
+                    </div>
+                    <p id="emptyStateTitle">Selecciona un PET</p>
+                    <p id="emptyStateSub">Elige un procedimiento del panel izquierdo para visualizarlo</p>
+                </div>
 
-        </p>
+                <!-- Splash loader -->
+                <div id="pdfSplashLoader" role="status" aria-label="Cargando PDF">
+                    <div class="pdf-splash-content">
+                        <div class="pdf-ring"></div>
+                        <div class="pdf-loading-text">Cargando PDF</div>
+                    </div>
+                </div>
+
+                <!-- PDF viewer -->
+                <div id="pdfViewer"></div>
+
+            </section>
+
+        </main>
 
     </div>
 
-    <!-- ========================================
-         ALERTAS
-    ========================================= -->
-    <div id="alertContainer"></div>
+    <!-- PDF.js -->
+    <script src="pdf.min.js" defer></script>
+
+    <!-- App -->
+    <script type="module" src="visor.js"></script>
 
 </body>
-
 </html>
