@@ -901,7 +901,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(244,246,249,.92);
+    background: rgba(255,255,255,.88);
     backdrop-filter: blur(12px);
     opacity: 0;
     visibility: hidden;
@@ -913,32 +913,55 @@ html, body {
     visibility: visible;
 }
 
-.pdf-splash-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 24px;
+.google-loader{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:16px;
 }
 
-.pdf-ring {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    border: 3px solid rgba(0,168,143,.18);
-    border-top-color: var(--accent);
-    border-right-color: var(--accent);
-    animation: ringSpinAnim .8s linear infinite;
+.dot{
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    animation:bounce 1.4s infinite ease-in-out;
+}
+
+.dot-blue{
+    background:#8B6B00;
+    animation-delay:0s;
+}
+
+.dot-red{
+    background:#B68B00;
+    animation-delay:0.15s;
+}
+
+.dot-yellow{
+    background:#D8AF2D;
+    animation-delay:0.30s;
+}
+
+.dot-green{
+    background:#F0D878;
+    animation-delay:0.45s;
+}
+
+@keyframes bounce{
+
+    0%,100%{
+        transform:translateY(0) scale(.85);
+        opacity:.6;
+    }
+
+    50%{
+        transform:translateY(-10px) scale(1.15);
+        opacity:1;
+    }
 }
 
 @keyframes ringSpinAnim {
     to { transform: rotate(360deg); }
-}
-
-.pdf-loading-text {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    letter-spacing: .04em;
 }
 
 /* -------------------------

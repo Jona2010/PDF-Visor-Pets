@@ -39,7 +39,7 @@ async function initializeApp() {
 
     try {
 
-        showLoading("Iniciando visor...");
+        togglePDFSplash(true);
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = "./pdf.worker.min.js";
 
@@ -73,7 +73,7 @@ async function initializeApp() {
         initializePageNav();
 
         console.log("✅ APP READY");
-        hideLoading();
+        togglePDFSplash(false);
 
     } catch (error) {
         console.error("❌ INIT ERROR:", error);
@@ -133,7 +133,7 @@ async function openPDF(path, petName, areaName) {
 
         toggleEmptyState(false);
         togglePDFSplash(true);
-        showLoading("Cargando PDF...");
+        //showLoading("Cargando PDF...");
 
         updateTopBar(petName, areaName);
 
@@ -141,13 +141,13 @@ async function openPDF(path, petName, areaName) {
         await viewer.load(pdfUrl);
 
         togglePDFSplash(false);
-        hideLoading();
+        //hideLoading();
 
     } catch (error) {
 
         console.error("❌ PDF ERROR:", error);
         togglePDFSplash(false);
-        hideLoading();
+        //hideLoading();
 
         // Reintento automático si URL expiró
         if (error?.message?.includes("expired") || error?.status === 400) {
@@ -407,7 +407,7 @@ function initializeOnlineStatus() {
     window.addEventListener("online",  () => hideLoading());
 }
 
-// ================================
+/* // ================================
 // ⏳ LOADING OVERLAY
 // ================================
 
@@ -426,7 +426,7 @@ function showLoading(text) {
 
 function hideLoading() {
     document.getElementById("loadingOverlay")?.classList.remove("show");
-}
+} */
 
 // ================================
 // 🚨 ERROR UI
