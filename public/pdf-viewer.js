@@ -121,9 +121,6 @@ export class PDFViewer {
     async load(url) {
         try {
             this.destroy();
-
-            //console.log("📄 LOADING PDF:", url);
-
             const loadingTask = pdfjsLib.getDocument({
                 url,
                 withCredentials: false
@@ -131,8 +128,6 @@ export class PDFViewer {
 
             this.pdfDoc   = await loadingTask.promise;
             this.loadedAt = Date.now();
-
-            //console.log("✅ PDF:", this.pdfDoc.numPages, "páginas");
 
             // Crear placeholders en paralelo
             await Promise.all(
@@ -295,8 +290,6 @@ export class PDFViewer {
 
             pageData.rendered     = true;
             pageData.currentScale = this.scale;
-
-            //console.log(`✅ PAGE ${pageNum}`);
 
         } catch (error) {
             if (error?.name !== "RenderingCancelledException") {
