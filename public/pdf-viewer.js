@@ -122,7 +122,7 @@ export class PDFViewer {
         try {
             this.destroy();
 
-            console.log("📄 LOADING PDF:", url);
+            //console.log("📄 LOADING PDF:", url);
 
             const loadingTask = pdfjsLib.getDocument({
                 url,
@@ -132,7 +132,7 @@ export class PDFViewer {
             this.pdfDoc   = await loadingTask.promise;
             this.loadedAt = Date.now();
 
-            console.log("✅ PDF:", this.pdfDoc.numPages, "páginas");
+            //console.log("✅ PDF:", this.pdfDoc.numPages, "páginas");
 
             // Crear placeholders en paralelo
             await Promise.all(
@@ -296,7 +296,7 @@ export class PDFViewer {
             pageData.rendered     = true;
             pageData.currentScale = this.scale;
 
-            console.log(`✅ PAGE ${pageNum}`);
+            //console.log(`✅ PAGE ${pageNum}`);
 
         } catch (error) {
             if (error?.name !== "RenderingCancelledException") {
