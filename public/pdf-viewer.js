@@ -269,7 +269,39 @@ export class PDFViewer {
             newCanvas.style.inset      = "0";
 
             const newCtx = newCanvas.getContext("2d", { alpha: false });
+
             newCtx.drawImage(tempCanvas, 0, 0);
+
+            // =====================================
+            // MARCA DE AGUA REPETIDA
+            // =====================================
+
+            newCtx.save();
+
+            newCtx.rotate(-Math.PI / 6);
+
+            const watermarkText =
+                "PROHIBIDO COMPARTIR";
+
+            newCtx.font =
+                `bold ${Math.floor(realWidth / 48)}px Arial`;
+
+            newCtx.fillStyle =
+                "rgba(184,134,11,0.13)";
+
+            for(let y = -realHeight; y < realHeight * 2; y += 260){
+
+                for(let x = -realWidth; x < realWidth * 2; x += 500){
+
+                    newCtx.fillText(
+                        watermarkText,
+                        x,
+                        y
+                    );
+                }
+            }
+
+            newCtx.restore();
 
             pageDiv.style.width  = `${viewport.width}px`;
             pageDiv.style.height = `${viewport.height}px`;

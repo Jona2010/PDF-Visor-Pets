@@ -973,7 +973,8 @@ html, body {
     width: fit-content;
     background: white;
     border-radius: 8px;
-    overflow: clip;
+    overflow:hidden;
+    overflow:clip;
     flex-shrink: 0;
     box-shadow: var(--shadow-page);
     transform-origin: top center;
@@ -982,6 +983,27 @@ html, body {
     opacity: 1;
     filter: none;
     animation: none;
+}
+
+.pdf-page::before{
+
+    content:"DOCUMENTO CONTROLADO";
+
+    position:absolute;
+
+    top:10px;
+    right:14px;
+
+    font-size:10px;
+    font-weight:700;
+
+    letter-spacing:1px;
+
+    color:rgba(184,134,11,.55);
+
+    z-index:20;
+
+    pointer-events:none;
 }
 
 @keyframes pageIntroAnim {
@@ -1008,6 +1030,13 @@ html, body {
     width:100% !important;
     height:100% !important;
     image-rendering:auto;
+
+    user-select:none;
+    -webkit-user-select:none;
+    -moz-user-select:none;
+
+    -webkit-user-drag:none;
+    pointer-events:none;
 }
 
 /* -------------------------
