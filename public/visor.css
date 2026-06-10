@@ -805,9 +805,11 @@ html, body {
     border: 0.5px solid var(--border-active);
 }
 
-/* Transición suave del viewer al hacer zoom */
+/* El zoom lo anima el JS (rAF lerp en zoom.js). NO poner transition aquí:
+   una transition sobre transform pelea con el rAF y produce temblor. */
 #pdfViewer {
-    transition: transform 0ms linear; /* sin transición CSS — el JS hace el lerp */
+    transform-origin: top center;
+    /* will-change: transform; */
 }
 
 /* -------------------------
@@ -884,8 +886,10 @@ html, body {
     flex-direction: column;
     align-items: center;
     gap: 32px;
-    min-width:100%;
-    width:max-content;
+
+    width: fit-content;
+    min-width: 0;
+
     transform-origin: top center;
     margin: 0 auto;
 }
@@ -970,7 +974,7 @@ html, body {
 
 .pdf-page {
     position: relative;
-    width: fit-content;
+    width: auto;
     background: white;
     border-radius: 8px;
     overflow:hidden;
@@ -1029,7 +1033,7 @@ html, body {
     display:block;
     width:100% !important;
     height:100% !important;
-    image-rendering:auto;
+    image-rendering:optimizeQuality;
 
     user-select:none;
     -webkit-user-select:none;
@@ -1367,4 +1371,48 @@ html, body {
 
     color:
         var(--text-accent);
+}
+
+.page-watermark{
+
+    position:absolute;
+
+    inset:0;
+
+    z-index:5;
+
+    pointer-events:none;
+
+    overflow:hidden;
+}
+
+.page-watermark-grid{
+
+    position:absolute;
+
+    inset:-30%;
+
+    display:grid;
+
+    grid-template-columns:
+        repeat(4,1fr);
+
+    gap:110px;
+
+    transform:rotate(-28deg);
+
+    opacity:.12;
+}
+
+.page-watermark-grid span{
+
+    font-size:34px;
+
+    font-weight:700;
+
+    color:#b8860b;
+
+    white-space:nowrap;
+
+    user-select:none;
 }

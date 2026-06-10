@@ -1,8 +1,19 @@
 export class ZoomManager {
 
+    // ── DEBUG: poner en false para silenciar ──
+    static DEBUG = false;
+
+    _log(...args) {
+        if (ZoomManager.DEBUG) {
+            const t = (performance.now() - (this._t0 || 0)).toFixed(1);
+            console.log(`[zoom +${t}ms]`, ...args);
+        }
+    }
+
     constructor({ viewer }) {
 
         this.viewer = viewer;
+        this._t0    = performance.now();
 
         // ── Estado de zoom ──
         this.zoom      = 1;
@@ -12,7 +23,7 @@ export class ZoomManager {
         this.isMobile = window.matchMedia("(max-width: 768px)").matches;
 
         // ── Límites ──
-        this.MIN_ZOOM  = 0.35;
+        this.MIN_ZOOM  = 0.20;
         this.MAX_ZOOM  = this.isMobile ? 3 : 5;
         this.ZOOM_STEP = 0.15;
 
@@ -28,6 +39,10 @@ export class ZoomManager {
         this.animId      = null;
         this.renderTimer = null;
         this.previousZoom = 1;
+
+        // Punto de anclaje del próximo render (posición del cursor en el wheel).
+        // null = anclar al centro del contenedor.
+        this.anchor = null;
 
         this.initialize();
     }
@@ -51,12 +66,29 @@ export class ZoomManager {
         // fitWidth como toggle
         fitBtn?.addEventListener("click", () => this.toggleFitWidth(fitBtn));
 
+        // ── Wheel zoom (Ctrl/⌘ + rueda) con anclaje al cursor ──
+        this.viewerContainer?.addEventListener("wheel", e => {
+
+            if (!e.ctrlKey && !e.metaKey) return;   // sólo zoom, no scroll normal
+
+            e.preventDefault();
+
+            // Guardar la posición del cursor para anclar el próximo render
+            this.anchor = { clientX: e.clientX, clientY: e.clientY };
+
+            // deltaY negativo = scroll arriba = acercar
+            const delta = -e.deltaY * 0.0015;
+            this.zoomBy(delta);
+
+        }, { passive: false });
+
         // Wheel zoom (Ctrl + rueda) — llamado desde visor.js
         // pero también puede registrarse aquI
         // Actualizar isMobile en resize
         window.addEventListener("resize", () => {
             this.isMobile = window.matchMedia("(max-width: 768px)").matches;
-            this.MAX_ZOOM = 5;
+            this.MAX_ZOOM =
+                this.isMobile ? 3 : 5;
             if (this.isFitMode) {
 
                 this._calcFitScale()
@@ -80,7 +112,10 @@ export class ZoomManager {
     // ================================
 
     step(direction) {
+        this._t0 = performance.now();
+        this._log(`STEP ${direction > 0 ? "+" : "−"} | zoom actual=${this.zoom.toFixed(3)} | viewer.scale=${this.viewer?.scale?.toFixed(3)}`);
         this.isFitMode = false;
+        this.anchor = null;   // botones/teclado → anclar al centro
         this.zoomTo(this.zoom + direction * this.ZOOM_STEP);
         this.updateFitButton(false);
     }
@@ -134,21 +169,29 @@ export class ZoomManager {
 
         // Iniciar loop de animación si no está corriendo
         if (!this.animId) {
+            if (this.viewer) this.viewer._zooming = true;
+            this._baseScale = this.viewer?.scale || 1;
+            this._frameCount = 0;
+            this._log(`ZOOM_TO target=${this.targetZoom.toFixed(3)} | baseScale congelada=${this._baseScale.toFixed(3)}`);
             this.animId = requestAnimationFrame(() => this._animateZoom());
+        } else {
+            this._log(`ZOOM_TO target=${this.targetZoom.toFixed(3)} (anim ya corriendo)`);
         }
     }
 
     _animateZoom() {
 
+        this._frameCount = (this._frameCount || 0) + 1;
         const diff   = this.targetZoom - this.zoom;
-        const speed  = 0.25;   // 0..1 — más alto = más rápido
+        const speed  = 0.85;   // 0..1 — más alto = más rápido
 
         if (Math.abs(diff) < 0.0008) {
             // Llegamos — fijar exacto y lanzar render real
             this.zoom   = this.targetZoom;
             this.animId = null;
-            //this._applyVisualScale(this.zoom);
+            this._applyVisualScale(this.zoom);
             this._updateLabel(this.zoom);
+            this._log(`ANIM FIN tras ${this._frameCount} frames | zoom=${this.zoom.toFixed(3)}`);
             this._scheduleRender();
             return;
         }
@@ -156,20 +199,47 @@ export class ZoomManager {
         // Lerp exponencial (como Acrobat: rápido al inicio, suave al llegar)
         this.zoom += diff * speed;
 
-        //this._applyVisualScale(this.zoom);
+        this._applyVisualScale(this.zoom);
         this._updateLabel(this.zoom);
 
         this.animId = requestAnimationFrame(() => this._animateZoom());
     }
 
-    /* // Aplica transform:scale SOLO como feedback visual durante la animación.
-    // El render real del PDF usa setScale (sin transform).
+    // Aplica transform:scale SOLO como feedback visual durante la animación.
+    // CLAVE: el transform es relativo a la escala YA renderizada (committedScale),
+    // no al zoom absoluto. Así no se produce doble escalado cuando setScale
+    // repinta las páginas a su tamaño real.
+    // El origen se fija en el punto del cursor para que el zoom "salga" de ahí.
     _applyVisualScale(z) {
-        if (this.pdfViewer) {
-            this.pdfViewer.style.transform       = `scale(${z})`;
-            this.pdfViewer.style.transformOrigin = "top center";
+
+        if (!this.pdfViewer) return;
+
+        const committed = this._baseScale || this.viewer?.scale || 1;
+        const ratio = z / committed;
+
+        // El origin del transform DEBE coincidir con el punto que _commitGeometry
+        // usa para anclar, o al quitar el transform habrá un salto.
+        // - Con cursor (wheel): el punto del cursor.
+        // - Sin cursor (botones/teclado): el centro del viewport.
+        const vrect = this.pdfViewer.getBoundingClientRect();
+        const crect = this.viewerContainer?.getBoundingClientRect();
+
+        let ox, oy;
+        if (this.anchor) {
+            ox = this.anchor.clientX - vrect.left;
+            oy = this.anchor.clientY - vrect.top;
+        } else if (crect) {
+            // centro del viewport, en coordenadas del #pdfViewer
+            ox = (crect.left + crect.width / 2) - vrect.left;
+            oy = (crect.top + crect.height / 2) - vrect.top;
+        } else {
+            ox = vrect.width / 2;
+            oy = 0;
         }
-    } */
+
+        this.pdfViewer.style.transformOrigin = `${ox}px ${oy}px`;
+        //this.pdfViewer.style.transform = `scale(${ratio})`;
+    }
 
     _updateLabel(z) {
         if (this.zoomLabel) {
@@ -177,13 +247,36 @@ export class ZoomManager {
         }
     }
 
-    // Debounce del render real: espera 180ms después de que la animación
-    // termine para no re-renderizar en cada frame de la rueda.
+    // Al terminar la animación:
+    // 1. _commitGeometry redimensiona y ajusta scroll SÍNCRONO.
+    // 2. En el MISMO frame se quita el transform → cero doble escalado.
+    // 3. El render nítido va después, async, sin bloquear (invisible).
     _scheduleRender() {
         clearTimeout(this.renderTimer);
         this.renderTimer = setTimeout(() => {
-            this.viewer?.setScale(this.zoom);
-        }, 220);
+
+            const anchor = this.anchor;
+
+            this._log(`COMMIT inicio | zoom=${this.zoom.toFixed(3)} | transform=${this.pdfViewer?.style.transform} | scrollTop=${this.viewerContainer?.scrollTop}`);
+
+            // ── Bloque SÍNCRONO: geometría + reset transform en el mismo frame ──
+            const changed = this.viewer?._commitGeometry(this.zoom, anchor, false);
+
+            if (this.pdfViewer) {
+                //this.pdfViewer.style.transform       = "scale(1)";
+                this.pdfViewer.style.transformOrigin = "top center";
+            }
+            if (this.viewer) this.viewer._zooming = false;
+            this.anchor = null;
+
+            this._log(`COMMIT fin | viewer.scale=${this.viewer?.scale?.toFixed(3)} | scrollTop=${this.viewerContainer?.scrollTop} | transform=${this.pdfViewer?.style.transform} | changed=${changed}`);
+
+            // ── Render nítido DESPUÉS, async (las páginas ya están al tamaño correcto) ──
+            if (changed) {
+                this.viewer?._renderVisible();
+            }
+
+        }, 1);
     }
 
     // ================================

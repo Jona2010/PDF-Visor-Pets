@@ -71,6 +71,7 @@ async function initializeApp() {
         initializeOnlineStatus();
         initializeMobileSidebar();
         initializePageNav();
+        createWatermarkOverlay();
 
         console.log("✅ APP READY");
         togglePDFSplash(false);
@@ -366,11 +367,12 @@ function initializeResize() {
 
         t = setTimeout(() => {
             if (!viewer || !zoom) return;
-            // Si estamos en modo fit, recalcular; si no, re-renderizar al zoom actual
+            // Si estamos en modo fit, recalcular; si no, re-renderizar al zoom actual.
+            // force=true → re-renderiza para reajustar nitidez aunque la escala sea igual.
             if (zoom.isFitMode) {
                 zoom._calcFitScale().then(s => s && zoom.zoomTo(s));
             } else {
-                viewer.setScale(zoom.targetZoom);
+                viewer.setScale(zoom.targetZoom, null, true);
             }
         }, 280);
 
@@ -458,6 +460,33 @@ function showFatalError(message, retryPath) {
             openPDF(retryPath);
         };
     }
+}
+
+// ================================
+// WATERMARK
+// ================================
+
+function createWatermarkOverlay(){
+
+    const overlay =
+        document.getElementById(
+            "pdfWatermarkOverlay"
+        );
+
+    if(!overlay) return;
+
+    let html =
+        `<div class="watermark-grid">`;
+
+    for(let i = 0; i < 80; i++){
+
+        html +=
+            `<span>PROHIBIDO COMPARTIR</span>`;
+    }
+
+    html += `</div>`;
+
+    overlay.innerHTML = html;
 }
 
 // ================================

@@ -8,7 +8,11 @@ export class PDFViewer {
 
         this.pdfDoc     = null;
         this.scale      = 1;
+        this.prevScale  = 1;   // escala anterior — para anclar el zoom al cursor
         this.pixelRatio = window.devicePixelRatio || 1;
+
+        // Flag para suprimir el observer de render mientras el zoom anima
+        this._zooming = false;
 
         this.currentPage = 1;
         this.loadedAt    = null;
@@ -41,6 +45,7 @@ export class PDFViewer {
             entries => {
                 if (!this.pdfDoc) return;
                 if (this.pages.length === 0) return;
+                if (this._zooming) return;   // no renderizar con escala vieja durante el gesto
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         const pageNum = Number(entry.target.dataset.page);
@@ -66,8 +71,9 @@ export class PDFViewer {
         this.pageObserver = new IntersectionObserver(
             entries => {
 
-                // Ignorar completamente si estamos en scroll programático
+                // Ignorar completamente si estamos en scroll programático o en zoom
                 if (this._scrolling) return;
+                if (this._zooming) return;
 
                 let bestPage = null;
                 let bestRatio = 0;
@@ -180,23 +186,51 @@ export class PDFViewer {
         `;
         pageDiv.appendChild(loadingLayer);
 
-        if (window.innerWidth <= 768) {
-            pageDiv.style.width =
-                `${viewport.width}px`;
+        pageDiv.style.width =
+            `${viewport.width}px`;
 
-            pageDiv.style.height =
-                `${viewport.height}px`;
-        } else {
-            pageDiv.style.minWidth  = `${viewport.width}px`;
-            pageDiv.style.minHeight = `${viewport.height}px`;
-        }
+        pageDiv.style.height =
+            `${viewport.height}px`;
+
+        pageDiv.style.minWidth = "0";
+        pageDiv.style.minHeight = "0";
 
         const canvas = document.createElement("canvas");
-        canvas.style.opacity    = "0";
+
+        canvas.style.opacity = "0";
         //canvas.style.transition = "opacity .25s ease";
-        canvas.style.width      = `${viewport.width}px`;
-        canvas.style.height     = `${viewport.height}px`;
+
+        canvas.style.width  = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+
         pageDiv.appendChild(canvas);
+
+        // ===============================
+        // MARCA DE AGUA POR PÁGINA
+        // ===============================
+
+        const watermark =
+            document.createElement("div");
+
+        watermark.className =
+            "page-watermark";
+
+        let html = "";
+
+        for(let i = 0; i < 50; i++){
+
+            html +=
+                "<span>PROHIBIDO COMPARTIR</span>";
+        }
+
+        watermark.innerHTML =
+        `
+        <div class="page-watermark-grid">
+            ${html}
+        </div>
+        `;
+
+        pageDiv.appendChild(watermark);
 
         this.viewer.appendChild(pageDiv);
 
@@ -276,22 +310,28 @@ export class PDFViewer {
             // MARCA DE AGUA REPETIDA
             // =====================================
 
-            newCtx.save();
+            /* newCtx.save();
 
             newCtx.rotate(-Math.PI / 6);
 
             const watermarkText =
                 "PROHIBIDO COMPARTIR";
 
+            const watermarkFontSize = 70;
+
             newCtx.font =
-                `bold ${Math.floor(realWidth / 48)}px Arial`;
+                `bold ${watermarkFontSize}px Arial`;
 
             newCtx.fillStyle =
                 "rgba(184,134,11,0.13)";
 
-            for(let y = -realHeight; y < realHeight * 2; y += 260){
+            const spacingY = 260;
 
-                for(let x = -realWidth; x < realWidth * 2; x += 500){
+            const spacingX = 500;
+
+            for(let y = -realHeight; y < realHeight * 2; y += spacingY){
+
+                for(let x = -realWidth; x < realWidth * 2; x += spacingX){
 
                     newCtx.fillText(
                         watermarkText,
@@ -301,7 +341,7 @@ export class PDFViewer {
                 }
             }
 
-            newCtx.restore();
+            newCtx.restore(); */
 
             pageDiv.style.width  = `${viewport.width}px`;
             pageDiv.style.height = `${viewport.height}px`;
@@ -334,67 +374,119 @@ export class PDFViewer {
 
     // ================================
     // 🔍 SET SCALE
+    //
+    // Reescrito: devuelve una promesa que resuelve cuando las
+    // páginas visibles están pintadas a la nueva escala.
+    //
+    // `anchor` (opcional) = { clientX, clientY } — punto de la
+    // pantalla que debe quedar FIJO tras el cambio de escala
+    // (típicamente la posición del cursor en el wheel-zoom).
+    // Si no se pasa, se usa el centro del contenedor.
     // ================================
 
-    async setScale(newScale) {
+    // ================================
+    // 🔍 SET SCALE
+    //
+    // REESCRITO para eliminar el doble escalado (causa del temblor):
+    //
+    //   _commitGeometry()  → SÍNCRONO. Redimensiona los pageDiv y
+    //                        ajusta el scroll EN EL MISMO FRAME. El
+    //                        llamador (zoom.js) quita el transform
+    //                        justo después, sin ventana intermedia.
+    //
+    //   _renderVisible()   → ASYNC. Repinta los canvas a nitidez real.
+    //                        Invisible: las páginas ya están al tamaño
+    //                        correcto; el bitmap viejo se ve estirado
+    //                        una fracción de segundo (como Acrobat).
+    // ================================
 
-        if (!this.pdfDoc) return;
+    // Cambia la geometría de forma síncrona y devuelve sin esperar render.
+    // Devuelve true si hubo cambio real de escala.
+    _commitGeometry(newScale, anchor = null, force = false) {
 
-        this.scale = Math.max(
-            0.35,
-            Math.min(newScale, 5)
-        );
+        if (!this.pdfDoc) return false;
 
+        this.prevScale = this.scale;
+        this.scale = Math.max(0.35, Math.min(newScale, 5));
+
+        if (this.scale === this.prevScale && !force) return false;
+
+        // Cancelar renders en vuelo (quedaron a la escala vieja)
         for (const task of this.renderTasks.values()) {
-            try {
-                task.cancel();
-            } catch {}
+            try { task.cancel(); } catch {}
         }
-
         this.renderTasks.clear();
-
         clearTimeout(this.zoomTimeout);
 
-        this.zoomTimeout = setTimeout(() => {
+        // ── Punto de anclaje ANTES de cambiar geometría ──
+        const containerRect = this.container.getBoundingClientRect();
+        const anchorX = anchor ? anchor.clientX - containerRect.left
+                               : this.container.clientWidth / 2;
+        const anchorY = anchor ? anchor.clientY - containerRect.top
+                               : this.container.clientHeight / 2;
 
-            this.pages.forEach(pageData => {
+        const contentX =
+            this.container.scrollLeft + anchorX;
 
-                pageData.rendered = false;
+        const contentY =
+            this.container.scrollTop + anchorY;
 
-                const viewport =
-                    pageData.page.getViewport({
-                        scale: this.scale
-                    });
+        const ratio =
+            this.scale / this.prevScale;
 
-                pageData.pageDiv.style.width =
-                    `${viewport.width}px`;
+        // 1. Redimensionar TODOS los pageDiv (síncrono)
+        this.pages.forEach(pageData => {
 
-                pageData.pageDiv.style.height =
-                    `${viewport.height}px`;
+            pageData.rendered = false;
 
-            });
+            const viewport =
+                pageData.page.getViewport({
+                    scale: this.scale
+                });
 
-            this.pages.forEach(pageData => {
+            pageData.pageDiv.style.width =
+                `${viewport.width}px`;
 
-                const rect =
-                    pageData.pageDiv.getBoundingClientRect();
+            pageData.pageDiv.style.height =
+                `${viewport.height}px`;
 
-                const visible =
+            pageData.pageDiv.style.minWidth = "0";
+            pageData.pageDiv.style.minHeight = "0";
+        });
 
-                    rect.bottom >= -800 &&
-                    rect.top <= window.innerHeight + 800;
+        // 2. Compensar scroll para conservar el punto anclado (síncrono, mismo frame)
+        if (anchor) {
 
-                if (visible) {
+            this.container.scrollLeft =
+                (contentX * ratio) - anchorX;
 
-                    this.renderVisiblePage(
-                        pageData.pageNum
-                    );
+            this.container.scrollTop =
+                (contentY * ratio) - anchorY;
+        }
 
-                }
+        return true;
+    }
 
-            });
+    // Repinta las páginas visibles a nitidez real. Async, fuera del frame crítico.
+    async _renderVisible() {
+        const renderJobs = [];
+        this.pages.forEach(pageData => {
+            const rect = pageData.pageDiv.getBoundingClientRect();
+            const visible = rect.bottom >= -800 &&
+                            rect.top <= window.innerHeight + 800;
+            if (visible) {
+                renderJobs.push(this.renderVisiblePage(pageData.pageNum));
+            }
+        });
+        await Promise.allSettled(renderJobs);
+    }
 
-        }, 25);
+    // API antigua conservada para compatibilidad (resize, etc.):
+    // hace el commit síncrono y luego el render async.
+    async setScale(newScale, anchor = null, force = false) {
+        const changed = this._commitGeometry(newScale, anchor, force);
+        if (!changed) return;
+        await this._renderVisible();
     }
 
     // ================================
