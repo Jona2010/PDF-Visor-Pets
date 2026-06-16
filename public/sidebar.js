@@ -148,6 +148,22 @@ export class Sidebar {
     }
 
     // ================================
+    // 📚 EXTRACT VERSION
+    // ================================
+
+    extractVersionFromPath(path){
+
+        const match =
+            path.match(
+                /(VERSION|VER|V)[\s_-]*(\d+)/i
+            );
+
+        return match
+            ? match[2].padStart(2,"0")
+            : null;
+    }
+
+    // ================================
     // 📦 CREATE CARD
     // ================================
 
@@ -169,11 +185,25 @@ export class Sidebar {
                 .replace(/^\d+[-\s]*/, "")
                 .trim();
 
+        const firstPath =
+            Object.values(pet.archivos)[0];
+
+        const version =
+            this.extractVersionFromPath(
+                firstPath
+            );
+
         // ==========================
         // NÚMERO PET
         // ==========================
 
         if(petNum){
+
+            const petHeader =
+                document.createElement("div");
+
+            petHeader.className =
+                "pet-number-row";
 
             const numEl =
                 document.createElement("div");
@@ -182,9 +212,13 @@ export class Sidebar {
                 "pet-number";
 
             numEl.textContent =
-                petNum;
+                version
+                    ? `${petNum} · VER. ${version}`
+                    : petNum;
 
-            card.appendChild(numEl);
+            petHeader.appendChild(numEl);
+
+            card.appendChild(petHeader);
         }
 
         // ==========================

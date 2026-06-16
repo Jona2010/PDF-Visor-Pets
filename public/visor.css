@@ -434,12 +434,12 @@ html, body {
 
 /* Número del PET */
 .pet-number {
-    font-size: 10px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     font-family: var(--font-mono);
-    color: var(--text-muted);
-    letter-spacing: .06em;
-    line-height: 1;
+    color: #111827;
+    letter-spacing: .04em;
+    line-height: 1.2;
 }
 
 .pet-card.active .pet-number {
@@ -1415,4 +1415,26 @@ html, body {
     white-space:nowrap;
 
     user-select:none;
+}
+
+.pet-number-row{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+}
+
+.pet-version{
+
+    font-size:11px;
+
+    font-weight:700;
+
+    letter-spacing:.08em;
+
+    opacity:.7;
+
+    white-space:nowrap;
 }

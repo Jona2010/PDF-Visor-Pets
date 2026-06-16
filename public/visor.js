@@ -22,6 +22,7 @@ let config    = null;
 
 let currentPath = null;
 let loading     = false;
+const versionCache = new Map();
 
 let isMobile = window.matchMedia("(max-width: 900px)").matches;
 
@@ -483,10 +484,53 @@ function createWatermarkOverlay(){
         html +=
             `<span>PROHIBIDO COMPARTIR</span>`;
     }
-
     html += `</div>`;
 
     overlay.innerHTML = html;
+}
+
+// ================================
+// EXTRACT PDF VERSION
+// ================================
+
+async function extractPdfVersion(pdfUrl){
+
+    try{
+
+        const pdf =
+            await pdfjsLib
+                .getDocument(pdfUrl)
+                .promise;
+
+        const page =
+            await pdf.getPage(1);
+
+        const content =
+            await page.getTextContent();
+
+        const text =
+            content.items
+                .map(i => i.str)
+                .join(" ");
+
+        const match =
+            text.match(
+                /Versi[oó]n\s*N[°º]?\s*:?\s*(\d+)/i
+            );
+
+        return match
+            ? match[1].padStart(2,"0")
+            : null;
+
+    }catch(err){
+
+        console.error(
+            "VERSION ERROR",
+            err
+        );
+
+        return null;
+    }
 }
 
 // ================================
