@@ -44,12 +44,7 @@ let redisClient = null;
 if(process.env.NODE_ENV === "production"){
 
     redisClient = createClient({
-        url: process.env.REDIS_URL,
-
-        socket: {
-            tls: true,
-            rejectUnauthorized: false
-        }
+        url: process.env.REDIS_URL
     });
 
     redisClient.on("error", (err) => {
