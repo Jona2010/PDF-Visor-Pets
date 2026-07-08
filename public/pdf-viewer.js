@@ -126,13 +126,22 @@ export class PDFViewer {
 
     async load(url) {
         try {
+
             this.destroy();
+
             const loadingTask = pdfjsLib.getDocument({
                 url,
                 withCredentials: false
             });
 
-            this.pdfDoc   = await loadingTask.promise;
+            // ✅ Guardar la referencia para poder cancelarla después
+            this.loadingTask = loadingTask;
+
+            this.pdfDoc = await loadingTask.promise;
+
+            // ✅ La carga terminó correctamente, ya no hace falta conservarla
+            this.loadingTask = null;
+
             this.loadedAt = Date.now();
 
             // Crear placeholders en paralelo
@@ -147,18 +156,17 @@ export class PDFViewer {
             this.onPageChange?.(1, this.pdfDoc.numPages);
 
             requestAnimationFrame(() => {
-
                 const firstPage = this.pages[0];
-
                 if (firstPage) {
-
                     this.renderVisiblePage(1);
-
                 }
-
             });
 
         } catch (error) {
+
+            // También limpiar la referencia si falla
+            this.loadingTask = null;
+
             console.error("❌ PDF LOAD ERROR:", error);
             throw error;
         }
@@ -568,20 +576,42 @@ export class PDFViewer {
     // ================================
 
     destroy() {
-        for (const task of this.renderTasks.values()) {
-            try { task.cancel(); } catch (_) {}
+
+        // ✅ Cancelar una carga de PDF que aún esté en progreso
+        if (this.loadingTask) {
+            try {
+                this.loadingTask.destroy();
+            } catch (e) {
+                console.warn("No se pudo cancelar loadingTask", e);
+            }
+            this.loadingTask = null;
         }
+
+        for (const task of this.renderTasks.values()) {
+            try {
+                task.cancel();
+            } catch {}
+        }
+
         this.renderTasks.clear();
 
         this.observer?.disconnect();
         this.pageObserver?.disconnect();
 
         this.viewer.innerHTML = "";
-        this.pages       = [];
-        this.pdfDoc      = null;
-        this.loadedAt    = null;
+
+        this.pages = [];
+        this.pdfDoc = null;
+        this.loadedAt = null;
         this.currentPage = 1;
-        this._scrolling  = false;
+
+        this._scrolling = false;
+        this._zooming = false;
+
         clearTimeout(this._scrollEnd);
+        clearTimeout(this.zoomTimeout);
+
+        this.initializeObserver();
+        this.initializePageObserver();
     }
 }

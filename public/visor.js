@@ -133,6 +133,16 @@ async function openPDF(path, petName, areaName) {
         loading     = true;
         currentPath = path;
 
+        hideFatalError?.();
+
+        viewer?.destroy?.();       // si existe
+        viewer?.clear?.();         // si existe
+
+        const container = document.getElementById("pdfContainer");
+        if (container) {
+            container.innerHTML = "";
+        }
+
         toggleEmptyState(false);
         togglePDFSplash(true);
         //showLoading("Cargando PDF...");
@@ -161,6 +171,14 @@ async function openPDF(path, petName, areaName) {
             } catch (e2) {
                 console.error("❌ RETRY ERROR:", e2);
             }
+        }
+
+        viewer?.destroy?.();
+        viewer?.clear?.();
+
+        const container = document.getElementById("pdfContainer");
+        if (container) {
+            container.innerHTML = "";
         }
 
         showFatalError("No se pudo abrir el PDF", path);
