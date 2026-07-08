@@ -481,6 +481,18 @@ function showFatalError(message, retryPath) {
     }
 }
 
+function hideFatalError() {
+
+    const overlay = document.getElementById("errorOverlay");
+
+    if (overlay) {
+        overlay.remove();
+    }
+
+    window.__retryPDF = null;
+
+}
+
 // ================================
 // WATERMARK
 // ================================
