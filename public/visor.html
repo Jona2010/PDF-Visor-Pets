@@ -114,9 +114,121 @@
                     </button>
                 </div>
 
-                <!-- Filtro rápido de áreas -->
-                <div id="areaFilterWrap">
-                    <div id="areaFilters" role="group" aria-label="Filtrar por área"></div>
+                <div class="sidebar-divider"></div>
+
+                <!-- ===================================================== -->
+                <!-- SIDEBAR V2 - NAVEGACIÓN -->
+                <!-- ===================================================== -->
+
+                <div id="sidebarNavigation">
+
+                    <div id="currentAreaInfo">
+
+                        <span class="area-label">
+                            Área seleccionada
+                        </span>
+
+                        <span id="currentAreaName">
+                            Todos
+                        </span>
+
+                    </div>
+
+                    <!-- Acciones -->
+                    <div id="sidebarActions">
+
+                        <button
+                            id="changeAreaBtn"
+                            type="button"
+                            aria-label="Cambiar área"
+                            title="Cambiar área">
+
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none">
+
+                                <rect
+                                    x="4"
+                                    y="4"
+                                    width="6"
+                                    height="6"
+                                    rx="1.5"
+                                    stroke="currentColor"
+                                    stroke-width="2"/>
+
+                                <rect
+                                    x="14"
+                                    y="4"
+                                    width="6"
+                                    height="6"
+                                    rx="1.5"
+                                    stroke="currentColor"
+                                    stroke-width="2"/>
+
+                                <rect
+                                    x="4"
+                                    y="14"
+                                    width="6"
+                                    height="6"
+                                    rx="1.5"
+                                    stroke="currentColor"
+                                    stroke-width="2"/>
+
+                                <rect
+                                    x="14"
+                                    y="14"
+                                    width="6"
+                                    height="6"
+                                    rx="1.5"
+                                    stroke="currentColor"
+                                    stroke-width="2"/>
+
+                            </svg>
+
+                            <span>Cambiar área</span>
+
+                        </button>
+
+                        <button
+                            id="requestBtn"
+                            type="button"
+                            aria-label="Solicitar procedimientos"
+                            title="Solicitar procedimientos">
+
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                aria-hidden="true">
+
+                                <path
+                                    d="M8 7h8M8 12h8M8 17h5"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                />
+
+                                <rect
+                                    x="4"
+                                    y="3"
+                                    width="16"
+                                    height="18"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                />
+
+                            </svg>
+
+                            <span>Solicitar PETS</span>
+
+                        </button>
+
+                    </div>
+
                 </div>
 
             </div>
@@ -128,6 +240,208 @@
             <div id="petsList" role="list"></div>
 
         </aside>
+
+        <!-- =======================================
+            PANEL SOLICITUD DE PROCEDIMIENTOS
+        ======================================= -->
+
+        <div
+            id="requestPanel"
+            hidden
+            aria-hidden="true"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="requestTitle"
+        >
+
+        <!-- Encabezado -->
+
+            <div id="requestPanelHeader">
+
+                <div class="request-title-group">
+
+                    <span class="request-label">
+                        Solicitud
+                    </span>
+
+                    <h2 id="requestTitle">
+
+                        Procedimientos PETS
+
+                    </h2>
+
+                </div>
+
+                <button
+                    id="closeRequestPanel"
+                    type="button"
+                    aria-label="Cerrar panel"
+                    title="Cerrar panel"
+                >
+
+                <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none">
+
+                <path
+                d="M6 6L18 18M18 6L6 18"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"/>
+
+                </svg>
+
+                </button>
+
+            </div>
+
+            <!-- =======================================
+                ÁREA
+            ======================================= -->
+
+            <div id="requestAreaContainer">
+
+                <label for="requestAreaSelect">
+
+                    Área
+
+                </label>
+
+                <select id="requestAreaSelect"></select>
+
+            </div>
+
+            <!-- =======================================
+                HERRAMIENTAS DE SOLICITUD
+            ======================================= -->
+
+            <div id="requestTools">
+
+                <div class="request-search">
+
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        aria-hidden="true">
+
+                        <path
+                            d="M21 21L16.65 16.65"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"/>
+
+                        <circle
+                            cx="11"
+                            cy="11"
+                            r="6"
+                            stroke="currentColor"
+                            stroke-width="2"/>
+
+                    </svg>
+
+                    <input
+                        id="requestSearch"
+                        type="text"
+                        placeholder="Buscar procedimiento..."
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        aria-label="Buscar procedimiento"
+                    >
+
+                </div>
+
+                <label
+                    class="request-select-all"
+                >
+
+                    <input
+                        id="requestSelectAll"
+                        type="checkbox"
+                        aria-label="Seleccionar todos los procedimientos"
+                    >
+
+                    <span>
+
+                        Seleccionar todos
+
+                    </span>
+
+                </label>
+
+            </div>
+
+            <!-- Contador -->
+
+            <div
+                id="requestCounter"
+                aria-live="polite"
+            >
+
+                0 procedimientos seleccionados
+
+            </div>
+
+            <!-- Lista -->
+
+            <div
+
+                id="requestPetsList"
+
+                role="list">
+
+                <div class="request-empty">
+
+                    No se encontraron procedimientos.
+
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+
+            <div id="requestFooter">
+
+                <button
+
+                    id="clearRequestBtn"
+
+                    aria-label="Limpiar selección"
+
+                    class="secondary"
+
+                    type="button"
+                    
+                    title="Limpiar selección">
+
+                    Limpiar
+
+                </button>
+
+                <button
+
+                    id="copyRequestBtn"
+
+                    aria-label="Copiar solicitud"
+
+                    class="primary"
+
+                    type="button"
+                    
+                    title="Copiar solicitud">
+
+                    Copiar para WhatsApp
+
+                </button>
+
+            </div>
+
+        </div>
 
         <!-- ===========================
              ÁREA PRINCIPAL
@@ -148,7 +462,7 @@
                 </button>
 
                 <div id="topBarTitle">
-                    <span id="topBarPetName">Selecciona un PET</span>
+                    <span id="topBarPetName">Selecciona un PETS</span>
                     <span id="topBarArea"></span>
                 </div>
             </div>
@@ -189,18 +503,95 @@
 
                 <!-- Zoom -->
                 <div id="zoomControls">
-                    <button id="zoomOut" title="Reducir zoom (Ctrl −)" aria-label="Reducir zoom">
+
+                    <button id="zoomOut" title="Reducir zoom">
+
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <path d="M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+
+                            <path
+                                d="M3 8h10"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                stroke-linecap="round"/>
+
                         </svg>
+
                     </button>
-                    <button id="zoomLabel" aria-label="Nivel de zoom actual" title="Click para restablecer zoom">100%</button>
-                    <button id="zoomIn" title="Aumentar zoom (Ctrl +)" aria-label="Aumentar zoom">
+
+                    <button id="zoomLabel">
+
+                        100%
+
+                    </button>
+
+                    <button id="zoomIn" title="Aumentar zoom">
+
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+
+                            <path
+                                d="M8 3v10M3 8h10"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                stroke-linecap="round"/>
+
                         </svg>
+
                     </button>
+
                 </div>
+
+                <div class="toolbar-divider"></div>
+
+                <!-- NUEVO BOTÓN -->
+
+                <button
+                    id="explorerBtn"
+                    type="button"
+                    title="Explorar PET"
+                    aria-label="Explorar PET">
+
+                    <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none">
+
+                        <path
+                            d="M4 5h16"
+
+                            stroke="currentColor"
+
+                            stroke-width="2"
+
+                            stroke-linecap="round"/>
+
+                        <path
+                            d="M4 12h16"
+
+                            stroke="currentColor"
+
+                            stroke-width="2"
+
+                            stroke-linecap="round"/>
+
+                        <path
+                            d="M4 19h10"
+
+                            stroke="currentColor"
+
+                            stroke-width="2"
+
+                            stroke-linecap="round"/>
+
+                    </svg>
+
+                    <span>
+
+                        Explorar PETS
+
+                    </span>
+
+                </button>
 
                 <!-- Divisor -->
                 <div class="toolbar-divider" aria-hidden="true"></div>
@@ -226,7 +617,7 @@
                             <path d="M18 20h20M18 26h20M18 32h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
                         </svg>
                     </div>
-                    <p id="emptyStateTitle">Selecciona un PET</p>
+                    <p id="emptyStateTitle">Selecciona un PETS</p>
                     <p id="emptyStateSub">Elige un procedimiento del panel izquierdo para visualizarlo</p>
                 </div>
 
@@ -245,9 +636,272 @@
                 <!-- PDF viewer -->
                 <div id="pdfViewer"></div>
 
+                <!-- ========================================================= -->
+                <!-- EXPLORAR PET -->
+                <!-- ========================================================= -->
+                
+                <div
+                    id="explorerOverlay"
+                    hidden
+                    aria-hidden="true">
+                </div>
+
+                <aside
+                    id="explorerPanel"
+                    role="complementary"
+                    hidden
+                    aria-hidden="true">
+
+                    <div id="explorerHeader">
+
+                        <div>
+
+                            <span class="explorer-label">
+
+                                Explorar PETS
+
+                            </span>
+
+                            <h3>
+
+                                PET
+
+                            </h3>
+
+                            <p id="explorerSubtitle">
+
+                            Sin documento abierto
+
+                            </p>
+
+                        </div>
+
+                        <button
+                            id="closeExplorerBtn"
+                            type="button"
+                            aria-label="Cerrar explorador"
+                            title="Cerrar">
+
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none">
+
+                                <path
+                                    d="M6 6L18 18M18 6L6 18"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"/>
+
+                            </svg>
+
+                        </button>
+
+                    </div>
+
+                    <!-- Tabs -->
+
+                    <div id="explorerTabs">
+
+                        <button
+                            class="explorer-tab active"
+
+                            data-view="steps">
+
+                            📋 Pasos de la Tarea
+
+                        </button>
+
+                        <button
+                            class="explorer-tab"
+
+                            data-view="search">
+
+                            🔍 Buscar
+
+                        </button>
+
+                    </div>
+
+                    <div id="explorerCounter">
+
+                        <span id="stepsCount">
+
+                            0 pasos
+
+                        </span>
+
+                        <span id="searchCount" hidden>
+
+                            0 coincidencias
+
+                        </span>
+
+                    </div>
+
+                    
+                    <div id="explorerViews">
+
+                    <!-- ==========================
+                        VISTA PASOS
+                    =========================== -->
+
+                    <div id="stepsView">
+
+                        <div id="explorerEmpty">
+
+                            <p>
+
+                                Selecciona un PET para explorar su contenido.
+
+                            </p>
+
+                        </div>
+
+                        <div
+                            id="explorerLoader"
+                            hidden>
+
+                            Analizando PET...
+
+                        </div>
+
+                    </div>
+
+                    <!-- ==========================
+                        VISTA BUSCADOR
+                    ========================== -->
+
+                    <div
+                        id="searchView"
+                        hidden>
+
+                        <div
+                            id="pdfSearchPanel"
+                            class="pdf-search-panel">
+
+                            <div class="pdf-search-header">
+
+                                <input
+                                    id="pdfSearchInput"
+                                    type="search"
+                                    placeholder="Buscar palabra o frase..."
+                                    autocomplete="off"
+                                    autocorrect="off"
+                                    autocapitalize="off"
+                                    spellcheck="false"
+                                    aria-label="Buscar dentro del PET"
+                                >
+
+                                <button
+                                    id="pdfSearchClear"
+                                    type="button"
+                                    title="Limpiar búsqueda">
+
+                                    ✕
+
+                                </button>
+
+                                <div class="pdf-search-navigation">
+
+                                    <button
+                                        id="pdfSearchPrev"
+                                        type="button"
+                                        title="Anterior">
+
+                                        ▲
+
+                                    </button>
+
+                                    <button
+                                        id="pdfSearchNext"
+                                        type="button"
+                                        title="Siguiente">
+
+                                        ▼
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                            <div
+                                id="pdfSearchInfo"
+                                aria-live="polite">
+
+                                Escribe una palabra para comenzar.
+
+                            </div>
+
+                            <div
+                                id="pdfSearchCounter"
+                                class="pdf-search-counter">
+
+                                0 resultados
+
+                            </div>
+
+                            <div
+                                id="pdfSearchResults"
+                                class="pdf-search-results"
+                                role="list">
+
+                                <!-- Estado vacío -->
+
+                                <div
+                                    id="pdfSearchEmpty"
+                                    class="pdf-search-empty">
+
+                                    No hay resultados.
+
+                                </div>
+
+                                <!-- Lista dinámica -->
+
+                                <div
+                                    id="pdfSearchList"
+                                    class="pdf-search-list">
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                </aside>
+
             </section>
 
         </main>
+
+    </div>
+
+     <!-- =======================================
+         TOAST
+    ======================================= -->
+
+    <div
+        id="toast"
+        class="toast"
+        aria-live="polite"
+        aria-atomic="true"
+    >
+
+        <div class="toast-icon">
+
+            ✓
+
+        </div>
+
+        <span id="toastMessage">
+
+        </span>
 
     </div>
 

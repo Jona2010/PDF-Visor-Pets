@@ -189,6 +189,288 @@ html, body {
     padding-bottom: 16px;
 }
 
+.sidebar-divider{
+    height:1px;
+    margin:8px 0 4px;
+    background:var(--border-subtle);
+}
+
+/* =========================================================
+   EXPLORER OVERLAY
+========================================================= */
+
+#explorerOverlay{
+
+    position:fixed;
+
+    inset:0;
+
+    background:rgba(0,0,0,.42);
+
+    backdrop-filter:blur(6px);
+
+    z-index:8900;
+
+    opacity:0;
+
+    visibility:hidden;
+
+    pointer-events:none;
+
+    transition:
+        opacity .28s ease,
+        visibility .28s ease;
+
+}
+
+#explorerOverlay.visible{
+
+    opacity:1;
+
+    visibility:visible;
+
+    pointer-events:auto;
+
+}
+
+/* =========================================================
+   EXPLORER PANEL
+========================================================= */
+
+#explorerPanel{
+
+    position:fixed;
+
+    top:0;
+
+    right:0;
+
+    width:min(420px,100vw);
+
+    height:100dvh;
+
+    display:flex;
+
+    flex-direction:column;
+
+    background:#fff;
+
+    border-left:
+
+        1px solid rgba(15,23,32,.08);
+
+    box-shadow:
+
+        -30px 0 60px rgba(0,0,0,.16);
+
+    backdrop-filter:blur(18px);
+
+    z-index:9001;
+
+    transform:translateX(100%);
+
+    transition:
+
+        transform .34s cubic-bezier(.2,.8,.2,1);
+
+}
+
+#explorerPanel:not([hidden]){
+
+    transform:translateX(0);
+
+}
+
+#explorerHeader{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:flex-start;
+
+    padding:24px;
+
+    border-bottom:
+
+        1px solid rgba(15,23,32,.08);
+
+    background:#fff;
+
+}
+
+.explorer-label{
+
+    display:block;
+
+    font-size:11px;
+
+    font-weight:700;
+
+    color:var(--text-muted);
+
+    text-transform:uppercase;
+
+    letter-spacing:.08em;
+
+    margin-bottom:6px;
+
+}
+
+#explorerHeader h3{
+
+    font-size:22px;
+
+    font-weight:700;
+
+    margin-bottom:6px;
+
+}
+
+#explorerSubtitle{
+
+    font-size:13px;
+
+    color:var(--text-muted);
+
+}
+
+#closeExplorerBtn{
+
+    width:38px;
+
+    height:38px;
+
+    border:none;
+
+    border-radius:50%;
+
+    background:transparent;
+
+    cursor:pointer;
+
+    transition:.25s;
+
+}
+
+#closeExplorerBtn:hover{
+
+    background:rgba(15,23,32,.06);
+
+}
+
+#explorerTabs{
+
+    display:flex;
+
+    gap:8px;
+
+    padding:18px 24px 10px;
+
+}
+
+.explorer-tab{
+
+    flex:1;
+
+    height:40px;
+
+    border:none;
+
+    border-radius:12px;
+
+    background:#f4f6f9;
+
+    color:var(--text-secondary);
+
+    cursor:pointer;
+
+    font-weight:600;
+
+    transition:.25s;
+
+}
+
+.explorer-tab:hover{
+
+    background:#eef2f7;
+
+}
+
+.explorer-tab.active{
+
+    background:
+
+        linear-gradient(
+            135deg,
+            var(--accent),
+            var(--accent-dark)
+        );
+
+    color:white;
+
+}
+
+#explorerCounter{
+
+    padding:
+
+        0 24px 16px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    font-size:12px;
+
+    color:var(--text-muted);
+
+}
+
+#explorerViews{
+
+    flex:1;
+
+    overflow-y:auto;
+
+    padding:0 20px 24px;
+
+}
+
+#explorerLoader{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    height:120px;
+
+    color:var(--text-muted);
+
+    font-size:13px;
+
+}
+
+#explorerEmpty{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    text-align:center;
+
+    min-height:240px;
+
+    color:var(--text-muted);
+
+    line-height:1.7;
+
+}
+
 /* Logo area */
 #logoArea {
     display: flex;
@@ -293,6 +575,21 @@ html, body {
 
 #searchInput::placeholder { color: var(--text-muted); }
 
+/* ==========================================
+   SIDEBAR V2
+   Buscador deshabilitado
+========================================== */
+
+#searchInput:disabled{
+
+    opacity:.55;
+
+    cursor:not-allowed;
+
+    background:rgba(15,23,32,.02);
+
+}
+
 #searchClear {
     position: absolute;
     right: 10px;
@@ -360,16 +657,167 @@ html, body {
     color: var(--text-accent);
 }
 
+/* =========================================================
+   SIDEBAR V2 - NAVEGACIÓN
+========================================================= */
+
+#sidebarNavigation{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:stretch;
+
+    gap:12px;
+
+    padding:6px 0;
+
+}
+
+#sidebarActions{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:10px;
+
+}
+
+#currentAreaInfo{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:6px;
+
+    min-width:0;
+
+    align-items:center;
+
+}
+
+.area-label{
+
+    font-size:11px;
+
+    letter-spacing:.12em;
+
+    color:var(--text-muted);
+
+    text-transform:uppercase;
+
+    font-weight:700;
+
+    text-align:center;
+
+}
+
+#currentAreaName{
+
+    font-size:22px;
+
+    font-weight:800;
+
+    letter-spacing:-.02em;
+
+    line-height:1;
+
+    text-align:center;
+
+    color:var(--text-primary);
+
+}
+
+#changeAreaBtn{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:8px;
+
+    width:100%;
+
+    height:42px;
+
+    padding:0 14px;
+
+    border:none;
+
+    border-radius:var(--r-pill);
+
+    background:linear-gradient(
+    180deg,
+    rgba(0,168,143,.08),
+    rgba(0,168,143,.16)
+    );
+
+    color:var(--text-accent);
+
+    justify-content:center;
+
+    font-size:12px;
+
+    font-weight:600;
+
+    cursor:pointer;
+
+    transition:all var(--t-fast);
+
+    flex-shrink:0;
+
+    box-shadow:
+
+        0 1px 0 rgba(255,255,255,.7) inset,
+
+        0 8px 18px rgba(0,168,143,.08);
+
+}
+
+#changeAreaBtn:hover{
+
+    background:rgba(0,168,143,.18);
+
+    transform:translateY(-1px);
+
+    box-shadow: 0 12px 28px rgba(0,168,143,.18);
+
+}
+
+#changeAreaBtn:active{
+
+    transform:scale(.96);
+
+}
+
+#changeAreaBtn svg{
+
+    flex-shrink:0;
+
+    transition:.25s;
+
+}
+
+#changeAreaBtn:hover svg{
+
+    transform:rotate(90deg);
+
+}
+
 /* -------------------------
    CONTADOR
 ------------------------- */
 
 #petsCounter {
-    padding: 8px 20px;
+    padding:14px 20px;
     font-size: 11px;
     color: var(--text-muted);
     letter-spacing: .04em;
     flex-shrink: 0;
+    font-weight:600;
     border-bottom: 0.5px solid var(--border-subtle);
 }
 
@@ -384,6 +832,173 @@ html, body {
     display: flex;
     flex-direction: column;
     gap: 4px;
+
+    /* ==========================================
+       SIDEBAR V2
+       Animación entre vistas
+    ========================================== */
+
+    opacity: 1;
+
+    transition: opacity .20s ease;
+}
+
+/* =========================================================
+   SIDEBAR V2 - TARJETAS DE ÁREA
+========================================================= */
+
+.area-card{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    justify-content:center;
+
+    gap:10px;
+
+    width:100%;
+
+    min-height:120px;
+
+    padding:18px;
+
+    border:none;
+
+    border-radius:var(--r-md);
+
+    background:linear-gradient(
+        180deg,
+        white,
+        #fafbfc
+        );
+
+    border:1px solid rgba(0,0,0,.06);
+
+    cursor:pointer;
+
+    transition:all var(--t-base);
+
+    box-shadow: 0 2px 10px rgba(0,0,0,.04);
+
+}
+
+.area-card:hover{
+
+    background:var(--bg-card-hover);
+
+    border-color:var(--area-color,var(--border-active));
+
+    transform:translateY(-3px);
+
+    box-shadow:
+    0 10px 24px rgba(0,0,0,.08),
+    0 0 0 1px color-mix(in srgb,var(--area-color) 18%,transparent);
+
+}
+
+.area-card:active{
+
+    transform:scale(.98);
+
+}
+
+.area-card-header{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+}
+
+.area-card-icon{
+
+    width:56px;
+
+    height:56px;
+
+    border-radius:18px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    background:color-mix(in srgb, var(--area-color, var(--accent)) 12%, white);
+
+    color:var(--area-color, var(--accent));
+
+    font-size:26px;
+
+    transition:all var(--t-base);
+
+}
+
+/* ==========================================
+   ICONOS SVG
+========================================== */
+
+.area-card-icon img{
+
+    width:34px;
+
+    height:34px;
+
+    object-fit:contain;
+
+    display:block;
+
+    user-select:none;
+
+    pointer-events:none;
+
+    transition:transform .25s ease;
+
+}
+
+.area-card:hover .area-card-icon img{
+
+    transform:scale(1.08);
+
+}
+
+.area-card.selected{
+
+    border-color:var(--area-color);
+
+    background:color-mix(in srgb, var(--area-color) 10%, white);
+
+    transform:translateY(-3px);
+
+    box-shadow: 0 16px 34px rgba(0,168,143,.16);
+
+}
+
+.area-card-title{
+
+    text-align:center;
+
+    font-size:15px;
+
+    font-weight:700;
+
+    color:var(--text-primary);
+
+}
+
+.area-card-count{
+
+    font-size:12px;
+
+    color:var(--text-muted);
+
+    text-align:center;
+
 }
 
 /* -------------------------
@@ -1437,4 +2052,1985 @@ html, body {
     opacity:.7;
 
     white-space:nowrap;
+}
+
+/* =========================================================
+   SOLICITUD DE PROCEDIMIENTOS
+========================================================= */
+
+#requestBtn{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    gap:8px;
+
+    width:100%;
+
+    height:42px;
+
+    margin-top:0;
+
+    border:none;
+
+    border-radius:var(--r-sm);
+
+    background:linear-gradient(
+        135deg,
+        var(--accent),
+        var(--accent-dark)
+    );
+
+    color:#fff;
+
+    font-size:13px;
+
+    font-weight:600;
+
+    cursor:pointer;
+
+    transition:all .25s ease;
+
+}
+
+#requestBtn::before{
+
+    content:"";
+
+    position:absolute;
+
+    top:0;
+
+    left:-120%;
+
+    width:70%;
+
+    height:100%;
+
+    background:linear-gradient(
+        90deg,
+        transparent,
+        rgba(255,255,255,.28),
+        transparent
+    );
+
+    transition:left .65s ease;
+
+}
+
+#requestBtn:hover::before{
+
+    left:140%;
+
+}
+
+#requestBtn svg{
+
+    transition:.25s;
+
+}
+
+#requestBtn:hover svg{
+
+    transform:translateX(3px);
+
+}
+
+@keyframes requestPulse{
+
+    0%,100%{
+
+        box-shadow:
+        0 0 0 rgba(0,168,143,0);
+
+    }
+
+    50%{
+
+        box-shadow:
+        0 0 18px rgba(0,168,143,.18);
+
+    }
+
+}
+
+#requestBtn{
+
+    animation:requestPulse 3.5s infinite;
+
+}
+
+#requestBtn:hover{
+
+    transform:translateY(-2px);
+
+    box-shadow:
+        0 10px 24px
+        rgba(0,168,143,.25);
+
+}
+
+#requestBtn:active{
+
+    transform:scale(.98);
+
+}
+
+/* ========================= */
+
+#requestPanel{
+
+    position:fixed;
+
+    top:0;
+
+    right:0;
+
+    width:min(440px,100vw);
+
+    height:100dvh;
+
+    display:flex;
+
+    flex-direction:column;
+
+    background:
+
+        linear-gradient(
+            180deg,
+            #ffffff,
+            #fbfcfd
+        );
+
+    border-left:
+
+        1px solid
+
+        rgba(15,23,32,.08);
+
+    box-shadow:
+
+        -30px 0 60px
+
+        rgba(0,0,0,.18);
+
+    backdrop-filter:
+
+        blur(18px);
+
+    z-index:9000;
+
+    transform:
+
+        translateX(100%);
+
+    transition:
+
+        transform .35s cubic-bezier(.2,.8,.2,1);
+
+}
+
+#requestPanel:not([hidden]){
+
+    transform:translateX(0);
+
+}
+
+#requestPanelHeader{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:22px 24px;
+
+    background:#fff;
+
+    border-bottom:
+
+        1px solid
+
+        rgba(15,23,32,.08);
+
+    position:sticky;
+
+    top:0;
+
+    z-index:3;
+
+}
+
+.request-title-group{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:4px;
+
+}
+
+.request-label{
+
+    font-size:11px;
+
+    font-weight:700;
+
+    color:var(--text-muted);
+
+    letter-spacing:.08em;
+
+    text-transform:uppercase;
+
+}
+
+#requestPanelHeader h2{
+
+    font-size:20px;
+
+    font-weight:700;
+
+}
+
+#closeRequestPanel{
+
+    width:36px;
+
+    height:36px;
+
+    border:none;
+
+    border-radius:50%;
+
+    background:transparent;
+
+    cursor:pointer;
+
+    font-size:18px;
+
+    transition:.25s;
+
+}
+
+#closeRequestPanel:hover{
+
+    background:rgba(15,23,32,.06);
+
+}
+
+/* ========================= */
+
+#requestAreaContainer{
+
+    padding:18px 24px;
+
+}
+
+#requestAreaContainer label{
+
+    display:block;
+
+    margin-bottom:8px;
+
+    font-size:12px;
+
+    font-weight:600;
+
+    color:var(--text-secondary);
+
+}
+
+#requestAreaSelect{
+
+    width:100%;
+
+    height:42px;
+
+    border:1px solid var(--border-subtle);
+
+    border-radius:10px;
+
+    padding:0 12px;
+
+    font-family:var(--font-body);
+
+    font-size:14px;
+
+    background:#fff;
+
+}
+
+/* ========================= */
+
+#requestCounter{
+
+    padding:0 24px 16px;
+
+    font-size:12px;
+
+    color:var(--text-muted);
+
+}
+
+/* ========================= */
+
+#requestPetsList{
+
+    flex:1;
+
+    overflow-y:auto;
+
+    padding:0 20px 20px;
+
+}
+
+.request-pet{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:12px;
+
+    padding:12px 14px;
+
+    margin-bottom:8px;
+
+    border-radius:12px;
+
+    border:1px solid transparent;
+
+    cursor:pointer;
+
+    transition:.20s;
+
+}
+
+.request-pet:hover{
+
+    background:
+
+        rgba(0,168,143,.06);
+
+    transform:
+
+        translateX(4px);
+
+}
+
+.request-pet.selected{
+
+    background:rgba(0,168,143,.10);
+
+    border-color:rgba(0,168,143,.35);
+
+}
+
+.request-pet input{
+
+    width:18px;
+
+    height:18px;
+
+    accent-color:
+
+        var(--accent);
+
+    cursor:pointer;
+
+    flex-shrink:0;
+
+}
+
+.request-select-all input{
+
+    cursor:pointer;
+
+    accent-color:
+
+        var(--accent);
+
+}
+
+.request-pet span{
+
+    font-size:13px;
+
+    color:var(--text-primary);
+
+}
+
+/* ========================= */
+
+.request-empty{
+
+    padding:40px;
+
+    text-align:center;
+
+    color:var(--text-muted);
+
+    font-size:13px;
+
+}
+
+/* ========================= */
+
+#requestFooter{
+
+    position:sticky;
+
+    bottom:0;
+
+    display:flex;
+
+    gap:12px;
+
+    padding:20px;
+
+    background:#fff;
+
+    border-top:
+
+        1px solid
+
+        rgba(15,23,32,.08);
+
+    z-index:3;
+
+}
+
+#requestFooter button{
+
+    flex:1;
+
+    height:42px;
+
+    border:none;
+
+    border-radius:10px;
+
+    cursor:pointer;
+
+    font-weight:600;
+
+    transition:.25s;
+
+}
+
+#clearRequestBtn{
+
+    background:#eef2f7;
+
+    color:#4b5563;
+
+}
+
+#clearRequestBtn:hover{
+
+    background:#dfe6ee;
+
+}
+
+#copyRequestBtn{
+
+    background:linear-gradient(
+        135deg,
+        var(--accent),
+        var(--accent-dark)
+    );
+
+    color:white;
+
+}
+
+#copyRequestBtn:hover{
+
+    transform:translateY(-1px);
+
+}
+
+#requestPetsList::-webkit-scrollbar{
+
+    width:8px;
+
+}
+
+#requestPetsList::-webkit-scrollbar-thumb{
+
+    background:
+
+        rgba(15,23,32,.15);
+
+    border-radius:999px;
+
+}
+
+#requestPetsList::-webkit-scrollbar-thumb:hover{
+
+    background:
+
+        rgba(15,23,32,.30);
+
+}
+
+.request-pet{
+
+    animation:
+
+        requestFade .18s ease;
+
+}
+
+@keyframes requestFade{
+
+    from{
+
+        opacity:0;
+
+        transform:
+
+            translateY(8px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:
+
+            translateY(0);
+
+    }
+
+}
+
+.request-search{
+
+    position:relative;
+
+    display:flex;
+
+    align-items:center;
+
+    margin-bottom:16px;
+
+}
+
+.request-search svg{
+
+    position:absolute;
+
+    left:12px;
+
+    color:
+
+        var(--text-muted);
+
+}
+
+#requestSearch{
+
+    width:100%;
+
+    height: 46px;
+
+    padding:
+
+        0 14px
+
+        0 38px;
+
+    border:
+
+        1px solid
+
+        var(--border-subtle);
+
+    border-radius:
+
+        var(--r-sm);
+
+    background:
+
+        var(--bg-input);
+
+    font-size:14px;
+
+    transition:
+
+        all var(--t-base);
+
+}
+
+#requestSearch:focus{
+
+    border-color:
+
+        var(--border-active);
+
+    box-shadow:
+
+        0 0 0 3px
+
+        rgba(0,168,143,.12);
+
+}
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+.toast{
+
+    position:fixed;
+
+    left:50%;
+
+    bottom:30px;
+
+    transform:translate(-50%,20px);
+
+    display:flex;
+
+    align-items:center;
+
+    gap:12px;
+
+    padding:14px 20px;
+
+    border-radius:14px;
+
+    background:#1f2937;
+
+    color:#fff;
+
+    box-shadow:0 18px 40px rgba(0,0,0,.25);
+
+    opacity:0;
+
+    visibility:hidden;
+
+    transition:.25s;
+
+    z-index:99999;
+
+}
+
+.toast.show{
+
+    opacity:1;
+
+    visibility:visible;
+
+    transform:translate(-50%,0);
+
+}
+
+.toast.success{
+
+    background:#0f766e;
+
+}
+
+.toast.warning{
+
+    background:#ca8a04;
+
+}
+
+.toast.error{
+
+    background:#dc2626;
+
+}
+
+.toast-icon{
+
+    font-size:18px;
+
+    font-weight:700;
+
+}
+
+/* =========================================================
+   EXPLORADOR PETS - PASOS DE LA TAREA
+========================================================= */
+
+#stepsView{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:14px;
+
+    padding-bottom:24px;
+
+}
+
+
+/* ===================================
+   STEP CARD - NAVEGACIÓN Y SUBSECCIONES
+   =================================== */
+
+.explorer-step {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 0;
+    padding: 0;
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    animation: slideInUp 0.3s ease-out forwards;
+    opacity: 0;
+}
+
+.explorer-step:hover {
+    background: #f5f5f5;
+    border-color: #00a88f;
+    box-shadow: 0 2px 8px rgba(0, 168, 143, 0.1);
+}
+
+.explorer-step.active {
+    background: #e8f7f3;
+    border-color: #00a88f;
+    box-shadow: 0 4px 12px rgba(0, 168, 143, 0.2);
+}
+
+/* ─────────────────────────────────
+   STEP HEADER (título + navegación)
+   ───────────────────────────────── */
+
+.explorer-step-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    cursor: pointer;
+}
+
+.explorer-step-number {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #00a88f;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.explorer-step-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.explorer-step-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #1a1a1a;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.explorer-step-page {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #666;
+    padding: 4px 8px;
+    background: rgba(0, 168, 143, 0.08);
+    border-radius: 4px;
+    width: fit-content;
+}
+
+.explorer-step-page svg {
+    flex-shrink: 0;
+}
+
+.explorer-step-arrow {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #00a88f;
+}
+
+.arrow-icon {
+    transition: transform 0.3s ease;
+    transform: rotate(0deg);
+}
+
+/* ─────────────────────────────────
+   STEP CONTENT (subsecciones)
+   ───────────────────────────────── */
+
+.explorer-step-content {
+    border-top: 1px solid #e0e0e0;
+    background: #fafafa;
+    display: none;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 500px;
+    }
+}
+
+.explorer-step-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+}
+
+.explorer-step-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e8e8e8;
+    font-size: 13px;
+    color: #444;
+    align-items: flex-start;
+}
+
+.explorer-step-item:last-child {
+    border-bottom: none;
+}
+
+.explorer-step-item:hover {
+    background: #f0f0f0;
+}
+
+.explorer-item-number {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    background: #e8e8e8;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.explorer-item-text {
+    flex: 1;
+    line-height: 1.4;
+    word-break: break-word;
+    color: #333;
+}
+
+.explorer-item-page {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: #999;
+    padding: 2px 6px;
+    background: white;
+    border-radius: 3px;
+    border: 1px solid #e0e0e0;
+    white-space: nowrap;
+}
+
+/* ─────────────────────────────────
+   ANIMACIÓN
+   ───────────────────────────────── */
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes explorerFade{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(10px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:none;
+
+    }
+
+}
+
+/* Estado vacío */
+
+.explorer-empty{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    justify-content:center;
+
+    gap:12px;
+
+    text-align:center;
+
+    padding:40px 20px;
+
+    color:var(--text-muted);
+
+}
+
+.explorer-empty-icon{
+
+    font-size:42px;
+
+}
+
+.explorer-empty h3{
+
+    margin:0;
+
+    font-size:18px;
+
+    color:var(--text-primary);
+
+}
+
+.explorer-empty p{
+
+    margin:0;
+
+    max-width:260px;
+
+    line-height:1.5;
+
+    font-size:14px;
+
+}
+
+/* =========================================================
+   EXPLORADOR PETS - BUSCADOR
+========================================================= */
+
+/* Panel */
+
+.pdf-search-panel{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:18px;
+
+    height:100%;
+
+    padding:4px 0 18px;
+
+}
+
+
+/* ==========================
+   Header
+========================== */
+
+.pdf-search-header{
+
+    position:sticky;
+
+    top:0;
+
+    z-index:5;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    padding:0 4px;
+
+    background:#fff;
+
+}
+
+
+/* ==========================
+   Input
+========================== */
+
+#pdfSearchInput{
+
+    flex:1;
+
+    height:46px;
+
+    padding:0 18px;
+
+    border:1px solid var(--border-subtle);
+
+    border-radius:14px;
+
+    background:var(--bg-input);
+
+    color:var(--text-primary);
+
+    font-family:var(--font-body);
+
+    font-size:14px;
+
+    transition:
+        border-color .25s ease,
+        background .25s ease,
+        box-shadow .25s ease;
+
+}
+
+#pdfSearchInput::placeholder{
+
+    color:var(--text-muted);
+
+}
+
+#pdfSearchInput:focus{
+
+    outline:none;
+
+    background:#fff;
+
+    border-color:var(--border-active);
+
+    box-shadow:
+        0 0 0 4px rgba(0,168,143,.10);
+
+}
+
+
+/* ==========================
+   Botón limpiar
+========================== */
+
+#pdfSearchClear{
+
+    width:42px;
+
+    height:42px;
+
+    flex-shrink:0;
+
+    border:none;
+
+    border-radius:12px;
+
+    background:transparent;
+
+    color:var(--text-secondary);
+
+    cursor:pointer;
+
+    transition:
+        background .20s ease,
+        color .20s ease,
+        transform .20s ease;
+
+}
+
+#pdfSearchClear:hover{
+
+    background:rgba(15,23,32,.06);
+
+    color:var(--text-primary);
+
+}
+
+#pdfSearchClear:active{
+
+    transform:scale(.94);
+
+}
+
+/* ==========================
+   Navegación
+========================== */
+
+.pdf-search-navigation{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:6px;
+
+}
+
+#pdfSearchPrev,
+#pdfSearchNext{
+
+    width:40px;
+
+    height:20px;
+
+    border:none;
+
+    border-radius:8px;
+
+    background:transparent;
+
+    color:var(--text-secondary);
+
+    cursor:pointer;
+
+    transition:
+        background .20s ease,
+        color .20s ease,
+        transform .20s ease;
+
+}
+
+#pdfSearchPrev:hover,
+#pdfSearchNext:hover{
+
+    background:rgba(15,23,32,.06);
+
+    color:var(--text-primary);
+
+}
+
+#pdfSearchPrev:active,
+#pdfSearchNext:active{
+
+    transform:scale(.92);
+
+}
+
+/* ==========================
+   Información
+========================== */
+
+#pdfSearchInfo{
+
+    padding:0 6px;
+
+    min-height:18px;
+
+    font-size:12px;
+
+    font-weight:600;
+
+    color:var(--text-muted);
+
+    letter-spacing:.02em;
+
+}
+
+/* ==========================
+   Contador
+========================== */
+
+#pdfSearchCounter{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:flex-end;
+
+    min-height:18px;
+
+    padding:0 6px;
+
+    font-size:12px;
+
+    font-weight:700;
+
+    color:var(--text-accent);
+
+    letter-spacing:.03em;
+
+    transition:
+        opacity .25s ease,
+        color .25s ease;
+
+}
+
+#pdfSearchCounter.empty{
+
+    color:var(--text-muted);
+
+    opacity:.75;
+
+}
+
+
+/* ==========================
+   Lista resultados
+========================== */
+
+.pdf-search-results{
+
+    flex:1;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:12px;
+
+    overflow-y:auto;
+
+    padding:2px 4px 10px;
+
+    transition:
+    opacity .25s ease;
+
+}
+
+/* ==========================
+   Lista dinámica
+========================== */
+
+.pdf-search-list{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:12px;
+
+}
+
+
+/* Scroll */
+
+.pdf-search-results::-webkit-scrollbar{
+
+    width:7px;
+
+}
+
+.pdf-search-results::-webkit-scrollbar-thumb{
+
+    background:rgba(15,23,32,.15);
+
+    border-radius:999px;
+
+}
+
+.pdf-search-results::-webkit-scrollbar-thumb:hover{
+
+    background:rgba(15,23,32,.28);
+
+}
+
+
+/* ==========================
+   Estado vacío
+========================== */
+
+.pdf-search-empty{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    text-align:center;
+
+    min-height:180px;
+
+    padding:28px;
+
+    border:1px dashed rgba(15,23,32,.10);
+
+    border-radius:18px;
+
+    color:var(--text-muted);
+
+    font-size:13px;
+
+    line-height:1.7;
+
+    background:
+
+        linear-gradient(
+            180deg,
+            rgba(255,255,255,.7),
+            rgba(245,247,249,.8)
+        );
+
+}
+
+/* =========================================================
+   TARJETAS DE RESULTADOS
+========================================================= */
+
+.pdf-search-card{
+
+    position:relative;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:10px;
+
+    padding:16px;
+
+    border-radius:18px;
+
+    border:1px solid rgba(15,23,32,.08);
+
+    background:#ffffff;
+
+    cursor:pointer;
+
+    overflow:hidden;
+
+    transition:
+        transform .22s ease,
+        box-shadow .22s ease,
+        border-color .22s ease,
+        background .22s ease;
+
+    box-shadow:
+        0 4px 16px rgba(15,23,32,.05);
+
+}
+
+
+/* Línea lateral */
+
+.pdf-search-card::before{
+
+    content:"";
+
+    position:absolute;
+
+    left:0;
+
+    top:0;
+
+    bottom:0;
+
+    width:4px;
+
+    background:var(--accent);
+
+    opacity:0;
+
+    transition:opacity .20s ease;
+
+}
+
+
+/* Hover */
+
+.pdf-search-card:hover{
+
+    transform:translateY(-2px);
+
+    border-color:rgba(0,168,143,.28);
+
+    box-shadow:
+
+        0 12px 28px rgba(0,168,143,.12);
+
+}
+
+
+.pdf-search-card:hover::before{
+
+    opacity:1;
+
+}
+
+.pdf-search-card.active{
+
+    background:
+
+        linear-gradient(
+
+            180deg,
+
+            rgba(0,168,143,.10),
+
+            rgba(0,168,143,.04)
+
+        );
+
+    border-color:var(--accent);
+
+    transform:translateX(5px);
+
+    box-shadow:
+
+        0 14px 32px
+
+        rgba(0,168,143,.18);
+
+}
+
+
+.pdf-search-card.active::before{
+
+    opacity:1;
+
+}
+
+
+/* Click */
+
+.pdf-search-card:active{
+
+    transform:scale(.985);
+
+}
+
+
+/* ==========================
+   Página
+========================== */
+
+.pdf-search-page{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:8px;
+
+    font-size:12px;
+
+    font-weight:700;
+
+    color:var(--text-accent);
+
+    text-transform:uppercase;
+
+    letter-spacing:.06em;
+
+}
+
+
+/* ==========================
+   Fragmento
+========================== */
+
+.pdf-search-snippet{
+
+    font-size:14px;
+
+    line-height:1.75;
+
+    color:var(--text-primary);
+
+    word-break:break-word;
+
+}
+
+
+/* ==========================
+   Palabra resaltada
+========================== */
+
+.pdf-search-highlight{
+
+    display:inline;
+
+    padding:1px 5px;
+
+    border-radius:6px;
+
+    background:
+
+        rgba(255,219,77,.55);
+
+    color:#111827;
+
+    font-weight:700;
+
+}
+
+
+/* ==========================
+   Animación
+========================== */
+
+.pdf-search-card{
+
+    animation:
+
+        pdfSearchFade .20s ease;
+
+}
+
+
+@keyframes pdfSearchFade{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(10px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:none;
+
+    }
+
+}
+
+/* =========================================================
+   BUSCADOR - ESTADOS
+========================================================= */
+
+/* Información */
+
+.pdf-search-info-success{
+
+    color:var(--text-accent);
+
+}
+
+.pdf-search-info-error{
+
+    color:#d97706;
+
+}
+
+.pdf-search-info-loading{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:8px;
+
+}
+
+
+/* Spinner */
+
+.pdf-search-spinner{
+
+    width:14px;
+
+    height:14px;
+
+    border-radius:50%;
+
+    border:2px solid rgba(0,168,143,.18);
+
+    border-top-color:var(--accent);
+
+    animation:pdfSearchSpin .65s linear infinite;
+
+}
+
+@keyframes pdfSearchSpin{
+
+    to{
+
+        transform:rotate(360deg);
+
+    }
+
+}
+
+/* ==========================================
+   Resultado seleccionado
+========================================== */
+
+@keyframes searchActivePulse{
+
+    0%{
+
+        box-shadow:
+
+            0 0 0 rgba(0,168,143,0);
+
+    }
+
+    50%{
+
+        box-shadow:
+
+            0 0 0 8px
+
+            rgba(0,168,143,.10);
+
+    }
+
+    100%{
+
+        box-shadow:
+
+            0 0 0 rgba(0,168,143,0);
+
+    }
+
+}
+
+
+/* =========================================================
+   SKELETON
+========================================================= */
+
+.pdf-search-skeleton{
+
+    position:relative;
+
+    overflow:hidden;
+
+    height:90px;
+
+    border-radius:18px;
+
+    border:1px solid rgba(15,23,32,.06);
+
+    background:#ffffff;
+
+    margin-bottom:12px;
+
+}
+
+.pdf-search-skeleton::before{
+
+    content:"";
+
+    position:absolute;
+
+    inset:0;
+
+    background:
+
+        linear-gradient(
+
+            90deg,
+
+            transparent,
+
+            rgba(255,255,255,.75),
+
+            transparent
+
+        );
+
+    animation:
+
+        pdfSkeleton 1.25s infinite;
+
+}
+
+.pdf-search-skeleton-line{
+
+    height:10px;
+
+    margin:16px;
+
+    border-radius:999px;
+
+    background:
+
+        rgba(15,23,32,.08);
+
+}
+
+.pdf-search-skeleton-line.short{
+
+    width:45%;
+
+}
+
+.pdf-search-skeleton-line.medium{
+
+    width:70%;
+
+}
+
+.pdf-search-skeleton-line.long{
+
+    width:88%;
+
+}
+
+@keyframes pdfSkeleton{
+
+    from{
+
+        transform:translateX(-100%);
+
+    }
+
+    to{
+
+        transform:translateX(100%);
+
+    }
+
+}
+
+
+/* =========================================================
+   CONTADOR
+========================================================= */
+
+#searchCount{
+
+    font-weight:700;
+
+    color:var(--text-accent);
+
+    transition:.25s;
+
+}
+
+#searchCount.hidden{
+
+    opacity:0;
+
+}
+
+
+/* =========================================================
+   SCROLL
+========================================================= */
+
+.pdf-search-results{
+
+    scroll-behavior:smooth;
+
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width:900px){
+
+    .pdf-search-panel{
+
+        gap:14px;
+
+    }
+
+    #pdfSearchInput{
+
+        height:44px;
+
+        font-size:16px;
+
+    }
+
+    .pdf-search-card{
+
+        padding:14px;
+
+    }
+
+    .pdf-search-snippet{
+
+        font-size:13px;
+
+        line-height:1.65;
+
+    }
+
+}
+
+@media (max-width:520px){
+
+    .pdf-search-card{
+
+        border-radius:16px;
+
+    }
+
+    .pdf-search-page{
+
+        font-size:11px;
+
+    }
+
+}
+
+/* =========================================================
+   MICROINTERACCIONES DEL BUSCADOR
+========================================================= */
+
+/* Panel */
+
+.pdf-search-panel{
+
+    animation:
+
+        searchPanelAppear .25s ease;
+
+}
+
+@keyframes searchPanelAppear{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(8px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:none;
+
+    }
+
+}
+
+
+.pdf-search-card:nth-child(1){animation-delay:.02s;}
+.pdf-search-card:nth-child(2){animation-delay:.04s;}
+.pdf-search-card:nth-child(3){animation-delay:.06s;}
+.pdf-search-card:nth-child(4){animation-delay:.08s;}
+.pdf-search-card:nth-child(5){animation-delay:.10s;}
+.pdf-search-card:nth-child(6){animation-delay:.12s;}
+.pdf-search-card:nth-child(7){animation-delay:.14s;}
+.pdf-search-card:nth-child(8){animation-delay:.16s;}
+.pdf-search-card:nth-child(9){animation-delay:.18s;}
+.pdf-search-card:nth-child(10){animation-delay:.20s;}
+
+
+/* ==========================
+   Focus accesible
+========================== */
+
+.pdf-search-card:focus-visible{
+
+    outline:none;
+
+    border-color:var(--accent);
+
+    box-shadow:
+
+        0 0 0 4px rgba(0,168,143,.18),
+
+        0 10px 24px rgba(0,168,143,.18);
+
+}
+
+
+/* ==========================
+   Highlight
+========================== */
+
+.pdf-search-highlight{
+
+    transition:
+
+        background .20s ease,
+
+        color .20s ease;
+
+}
+
+.pdf-search-card:hover .pdf-search-highlight{
+
+    background:#ffd84f;
+
+}
+
+
+/* ==========================
+   Página
+========================== */
+
+.pdf-search-page{
+
+    user-select:none;
+
+}
+
+
+/* ==========================
+   Snippet
+========================== */
+
+.pdf-search-snippet{
+
+    transition:
+
+        color .20s ease;
+
+}
+
+.pdf-search-card:hover .pdf-search-snippet{
+
+    color:#111827;
+
+}
+
+.page-highlight-layer .pdf-search-highlight{
+
+    position:absolute;
+
+    background:rgba(255,235,59,.35);
+
+    border:1px solid rgba(255,193,7,.9);
+
+    border-radius:3px;
+
+    box-sizing:border-box;
+
+}
+
+.pdf-search-highlight.active{
+
+    background: rgba(255,140,0,.55);
+
+    border: 2px solid #ff9800;
+
+    box-shadow: 0 0 8px rgba(255,152,0,.5);
+
 }
