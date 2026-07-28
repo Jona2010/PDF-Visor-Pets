@@ -3731,6 +3731,36 @@ export class PDFViewer {
     }
 
     // ================================
+    // 🧹 RESET OUTLINE
+    // ================================
+
+    resetOutline() {
+        // Limpiar el outline del documento
+        this.outline = [];
+        this.outlineTree = [];
+        this.outlineIndex = new Map();
+        this.outlineLocations = new Map();
+        this.outlineFragments = [];
+        this.outlineLines = [];
+        this.outlineStats = {
+            totalFragments: 0,
+            totalHeadings: 0,
+            totalLevels: 0
+        };
+        this.outlineRange = {
+            startPage: null,
+            endPage: null,
+            startIndex: null,
+            endIndex: null
+        };
+        this.headingStyles = {
+            normalSize: 0,
+            headingSize: 0,
+            boldFonts: new Set()
+        };
+    }
+
+    // ================================
     // 🧹 DESTROY
     // ================================
 
