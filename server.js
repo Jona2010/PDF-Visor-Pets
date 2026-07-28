@@ -104,7 +104,7 @@ app.use(express.static(
     path.join(__dirname, "public"),
     {
 
-        maxAge: "30d",
+        maxAge: "0d",
 
         etag: true,
 
