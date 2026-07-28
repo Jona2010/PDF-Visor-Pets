@@ -1,3 +1,6 @@
+import { DocumentParser } from "./parser/document-parser.js";
+
+
 export class PDFViewer {
 
     constructor({ container, viewer, onPageChange }) {
@@ -16,6 +19,10 @@ export class PDFViewer {
 
         this.currentPage = 1;
         this.loadedAt    = null;
+
+        this.documentParser =
+
+            new DocumentParser(this);
 
         // ================================
         // 🔎 SEARCH ENGINE
@@ -62,6 +69,34 @@ export class PDFViewer {
         this.highlightLayers = new Map();
 
         this.outlineTaskSteps = [];
+
+        // =====================================
+        // Índices del documento
+        // =====================================
+
+        this.outlineIndex = new Map();
+
+        this.outlineLocations = new Map();
+
+        this.documentIndex = new Map();
+
+        this.documentLocations = new Map();
+
+        // =====================================
+        // Estadísticas
+        // =====================================
+
+        this.documentStatistics = {
+
+            totalNodes:0,
+
+            totalItems:0,
+
+            totalWords:0,
+
+            maxLevel:0
+
+        };
 
         // ================================
         // 📚 SECCIONES DEL PET
@@ -291,6 +326,12 @@ export class PDFViewer {
 
             await this.buildTextIndex();
 
+            // ===================================
+            // Sincronizar información con el parser
+            // ===================================
+
+            this.documentParser.synchronize();
+
             // ================================
             // MOTOR ACTUAL
             // ================================
@@ -305,17 +346,22 @@ export class PDFViewer {
             // ================================
             // NUEVO DOCUMENT OUTLINE ENGINE
             // ================================
-            this.extractProcedureRange();
+           this.documentParser.buildOutline();
 
-            this.mergeFragmentsIntoLines();
+            this.outlineTree =
+                this.documentParser.getOutlineTree();
 
-            this.detectHeadingStyles();
+            this.outline =
+                this.documentParser.getOutline();
 
-            this.detectOutlineHeadings();
+            this.outlineIndex =
+                this.documentParser.outlineIndex;
 
-            this.buildOutlineTree();
+            this.outlineLocations =
+                this.documentParser.outlineLocations;
 
-            this.exportOutlineTasks();
+            this.outlineTaskSteps =
+                this.documentParser.exportOutlineTasks();
             // DEBUG: Ver qué pasos se extrajeron
             console.log("🔍 DEBUG - Pasos extraídos:", this.taskSteps.length);
             if (this.taskSteps.length > 0) {
@@ -2011,27 +2057,75 @@ export class PDFViewer {
 
                     : null;
 
-            // -------------------------------------
-            // Crear nodo
-            // -------------------------------------
-
             const node = {
 
-                id: id++,
+                // ==========================
+                // Identificación
+                // ==========================
 
-                page: row.page,
+                id,
 
-                title: text,
+                page:line.page,
 
-                headerType: info.type,
+                title:text,
 
-                level: info.level,
+                shortTitle:
 
-                parentId: parent ? parent.id : null,
+                    text
 
-                children: [],
+                        .replace(/^(\d+(\.\d+)*)\s*/, "")
 
-                items: []
+                        .replace(/^(I|II|III|IV|V|VI|VII|VIII|IX|X)\.\s*/i, "")
+
+                        .replace(/^[A-ZÑ]\.\s*/, "")
+
+                        .trim(),
+
+                // ==========================
+                // Ubicación
+                // ==========================
+
+                x:line.x,
+
+                y:line.y,
+
+                width:line.width,
+
+                height:line.height,
+
+                fontSize:line.fontSize,
+
+                // ==========================
+                // Jerarquía
+                // ==========================
+
+                level,
+
+                type,
+
+                parent:null,
+
+                children:[],
+
+                // ==========================
+                // Contenido
+                // ==========================
+
+                items:[],
+
+                rawLines:[],
+
+                preview:"",
+
+                // ==========================
+                // Estadísticas
+                // ==========================
+
+                totalItems:0,
+
+                totalWords:0,
+
+                expanded:false
 
             };
 
@@ -3636,824 +3730,6 @@ export class PDFViewer {
 
     }
 
-    // =====================================================
-    // DOCUMENT OUTLINE ENGINE
-    // =====================================================
-
-    resetOutline(){
-
-        this.outlineFragments = [];
-
-        this.outlineLines = [];
-
-        this.outline = [];
-
-        this.outlineTree = [];
-
-        this.outlineTaskSteps = [];
-
-        this.outlineIndex.clear();
-
-        this.outlineLocations.clear();
-
-        this.outlineRange = {
-
-            startPage:null,
-            endPage:null,
-
-            startIndex:null,
-            endIndex:null
-
-        };
-
-        this.outlineStats = {
-
-            totalFragments:0,
-
-            totalHeadings:0,
-
-            totalLevels:0
-
-        };
-
-    }
-
-    getOutline(){
-
-        return this.outline;
-
-    }
-
-    getOutlineTree(){
-
-        return this.outlineTree;
-
-    }
-
-    // =====================================================
-    // OBTENER NODOS RAÍZ
-    // =====================================================
-
-    getOutlineRoots(){
-
-        return this.outlineTree;
-
-    }
-
-    // =====================================================
-    // OBTENER HIJOS
-    // =====================================================
-
-    getOutlineChildren(id){
-
-        const node =
-
-            this.getOutlineNode(id);
-
-        if(!node){
-
-            return [];
-
-        }
-
-        return node.children;
-
-    }
-
-    // =====================================================
-    // OBTENER PADRE
-    // =====================================================
-
-    getOutlineParent(id){
-
-        const node =
-
-            this.getOutlineNode(id);
-
-        if(!node){
-
-            return null;
-
-        }
-
-        if(node.parent===null){
-
-            return null;
-
-        }
-
-        return this.getOutlineNode(
-
-            node.parent
-
-        );
-
-    }
-
-    getOutlineNode(id){
-
-        return this.outlineIndex.get(id) || null;
-
-    }
-
-    getOutlineLocation(id){
-
-        return this.outlineLocations.get(id) || null;
-
-    }
-
-    debugOutline(){
-
-        console.group(
-
-            "DOCUMENT OUTLINE"
-
-        );
-
-        console.table(
-
-            this.outline.map(node=>({
-
-                id:node.id,
-
-                title:node.title,
-
-                level:node.level,
-
-                parent:node.parent,
-
-                children:node.children.length,
-
-                page:node.page
-
-            }))
-
-        );
-
-        console.groupEnd();
-
-    }
-
-    // =====================================================
-    // EXTRAER RANGO DEL PROCEDIMIENTO
-    // =====================================================
-
-    extractProcedureRange() {
-
-        this.resetOutline();
-
-        if (!this.searchReady) {
-            return;
-        }
-
-        const startRegex =
-            /^\s*4(\.\d+)?\.?\s+PROCEDIMIENTO\b/i;
-
-        const endRegex =
-            /^\s*5(\.\d+)?\.?\s+RESTRICCIONES\b/i;
-
-        let started = false;
-
-        for (const page of this.searchIndex) {
-
-            // Ignorar índice
-            if (page.page === 1) {
-                continue;
-            }
-
-            const fragments =
-                this.pageTextFragments.get(page.page);
-
-            if (!fragments) {
-                continue;
-            }
-
-            for (let i = 0; i < fragments.length; i++) {
-
-                const fragment = fragments[i];
-
-                const text =
-                    fragment.text.trim();
-
-                if (!text) {
-                    continue;
-                }
-
-                // Inicio del procedimiento
-                if (!started) {
-
-                    if (startRegex.test(text)) {
-
-                        started = true;
-
-                        this.outlineRange.startPage =
-                            page.page;
-
-                        this.outlineRange.startIndex =
-                            i;
-
-                    }
-
-                }
-
-                if (started) {
-
-                    this.outlineFragments.push({
-
-                        page: page.page,
-
-                        index: i,
-
-                        text: fragment.text,
-
-                        x: fragment.x,
-
-                        y: fragment.y,
-
-                        width: fragment.width,
-
-                        height: fragment.height,
-
-                        fontSize: fragment.fontSize
-
-                    });
-
-                }
-
-                // Fin del procedimiento
-                if (
-                    started &&
-                    endRegex.test(text)
-                ) {
-
-                    this.outlineRange.endPage =
-                        page.page;
-
-                    this.outlineRange.endIndex =
-                        i;
-
-                    started = false;
-
-                    break;
-
-                }
-
-            }
-
-            if (!started && this.outlineRange.endPage) {
-                break;
-            }
-
-        }
-
-        this.outlineStats.totalFragments =
-            this.outlineFragments.length;
-
-        console.group("DOCUMENT OUTLINE RANGE");
-
-        console.log("Rango:");
-
-        console.table(this.outlineRange);
-
-        console.log("Total Fragmentos:", this.outlineFragments.length);
-
-        console.table(this.outlineFragments);
-
-        console.groupEnd();
-
-    }
-
-    // =====================================================
-    // RECONSTRUIR LÍNEAS DEL PROCEDIMIENTO
-    // =====================================================
-
-    mergeFragmentsIntoLines(){
-
-        this.outlineLines = [];
-
-        if(!this.outlineFragments.length){
-
-            return;
-
-        }
-
-        const pages = new Map();
-
-        for (const fragment of this.outlineFragments) {
-
-            if (!pages.has(fragment.page)) {
-                pages.set(fragment.page, []);
-            }
-
-            pages.get(fragment.page).push(fragment);
-
-        }
-
-        pages.forEach((fragments,page)=>{
-
-            fragments.sort((a,b)=>{
-
-                if(Math.abs(a.y-b.y)>2){
-
-                    return b.y-a.y;
-
-                }
-
-                return a.x-b.x;
-
-            });
-
-            let current=null;
-
-            for(const fragment of fragments){
-
-                if(
-
-                    !current ||
-
-                    Math.abs(current.y-fragment.y)>3
-
-                ){
-
-                    current={
-
-                        page,
-
-                        y:fragment.y,
-
-                        x:fragment.x,
-
-                        width:fragment.width,
-
-                        height:fragment.height,
-
-                        fontSize:fragment.fontSize,
-
-                        fragments:[fragment]
-
-                    };
-
-                    this.outlineLines.push(current);
-
-                }
-
-                else{
-
-                    current.fragments.push(fragment);
-
-                    current.width=
-
-                        fragment.x+
-
-                        fragment.width-
-
-                        current.x;
-
-                }
-
-            }
-
-        });
-
-        this.outlineLines.forEach(line=>{
-
-            line.fragments.sort((a,b)=>a.x-b.x);
-
-            line.text=
-
-                line.fragments
-
-                    .map(f=>f.text)
-
-                    .join(" ")
-
-                    .replace(/\s+/g," ")
-
-                    .trim();
-
-        });
-
-        console.group("DOCUMENT OUTLINE LINES");
-
-        console.table(
-
-            this.outlineLines.map(line=>({
-
-                page:line.page,
-
-                text:line.text,
-
-                y:line.y,
-
-                fragments:line.fragments.length
-
-            }))
-
-        );
-
-        console.groupEnd();
-
-    }
-
-    // =====================================================
-    // DETECTAR ESTILOS DEL DOCUMENTO
-    // =====================================================
-
-   detectHeadingStyles() {
-
-        if (!this.outlineFragments.length) {
-
-            return;
-
-        }
-
-        const histogram = new Map();
-
-        for (const line of this.outlineLines) {
-
-            const size = Math.round(line.fontSize);
-
-            histogram.set(
-
-                size,
-
-                (histogram.get(size) || 0) + 1
-
-            );
-
-        }
-
-        let normalSize = 0;
-
-        let normalCount = 0;
-
-        histogram.forEach((count, size) => {
-
-            if (count > normalCount) {
-
-                normalCount = count;
-
-                normalSize = size;
-
-            }
-
-        });
-
-        this.headingStyles.normalSize = normalSize;
-
-        this.headingStyles.headingSize =
-
-            Math.max(
-
-                ...histogram.keys()
-
-            );
-
-        console.group("DOCUMENT STYLES");
-
-        console.table(
-
-            [...histogram.entries()].map(
-
-                ([size, count]) => ({
-
-                    size,
-
-                    count
-
-                })
-
-            )
-
-        );
-
-        console.log(
-
-            "Texto:",
-
-            normalSize
-
-        );
-
-        console.log(
-
-            "Encabezado:",
-
-            this.headingStyles.headingSize
-
-        );
-
-        console.groupEnd();
-
-    }
-
-    // =====================================================
-    // DETECTAR ENCABEZADOS
-    // =====================================================
-
-    detectOutlineHeadings() {
-
-        this.outline = [];
-
-        let id = 1;
-
-        for (const line of this.outlineLines) {
-
-            const text = line.text.trim();
-
-            if (!text) {
-                continue;
-            }
-
-            let level = null;
-
-            let type = null;
-
-            // -----------------------------
-            // 4.2.1
-            // -----------------------------
-
-            if (/^\d+(\.\d+)+/.test(text)) {
-
-                level =
-                    text.match(/\./g).length;
-
-                type = "decimal";
-
-            }
-
-            // -----------------------------
-            // I.
-            // -----------------------------
-
-            else if (
-
-                /^(I|II|III|IV|V|VI|VII|VIII|IX|X)\./i.test(text)
-
-            ) {
-
-                level = 1;
-
-                type = "roman";
-
-            }
-
-            // -----------------------------
-            // A.
-            // -----------------------------
-
-            else if (
-
-                /^[A-ZÑ]\./.test(text)
-
-            ) {
-
-                level = 3;
-
-                type = "letter";
-
-            }
-
-            // -----------------------------
-            // Encabezados visuales
-            // -----------------------------
-
-            else if (
-
-                fragment.fontSize >=
-                this.headingStyles.headingSize
-
-            ) {
-
-                level = 2;
-
-                type = "visual";
-
-            }
-
-            if (level === null) {
-                continue;
-            }
-
-            const node = {
-
-                id,
-
-                title: text,
-
-                shortTitle:
-
-                    text
-
-                        .replace(/^(\d+(\.\d+)*)\s*/, "")
-
-                        .replace(/^(I|II|III|IV|V|VI|VII|VIII|IX|X)\.\s*/i, "")
-
-                        .replace(/^[A-ZÑ]\.\s*/, "")
-
-                        .trim(),
-
-                page: line.page,
-
-                x: line.x,
-
-                y: line.y,
-
-                width: line.width,
-
-                height: line.height,
-
-                fontSize: line.fontSize,
-
-                level,
-
-                type,
-
-                parent: null,
-
-                children: []
-
-            };
-
-            this.outline.push(node);
-
-            this.outlineIndex.set(
-                id,
-                node
-            );
-
-            this.outlineLocations.set(
-                id,
-                {
-
-                    page: fragment.page,
-
-                    x: fragment.x,
-
-                    y: fragment.y
-
-                }
-
-            );
-
-            id++;
-
-        }
-
-        this.outlineStats.totalHeadings =
-            this.outline.length;
-
-        console.group(
-            "DOCUMENT OUTLINE HEADINGS"
-        );
-
-        console.table(this.outline);
-
-        console.groupEnd();
-
-    }
-
-    // =====================================================
-    // CONSTRUIR ÁRBOL DEL DOCUMENTO
-    // =====================================================
-
-    buildOutlineTree(){
-
-        this.outlineTree = [];
-
-        if(!this.outline.length){
-
-            return;
-
-        }
-
-        const stack = [];
-
-        for(const node of this.outline){
-
-            node.parent = null;
-
-            const cloned = {
-
-                ...node,
-
-                children: []
-
-            };
-
-            while(
-
-                stack.length &&
-
-                stack[stack.length-1].level >= node.level
-
-            ){
-
-                stack.pop();
-
-            }
-
-            if(stack.length){
-
-                node.parent =
-                    stack[stack.length-1].id;
-
-                stack[stack.length-1]
-                    .children
-                    .push(node);
-
-            }
-
-            else{
-
-                this.outlineTree.push(node);
-
-            }
-
-            stack.push(node);
-
-        }
-
-        this.outlineStats.totalLevels =
-
-            Math.max(
-
-                ...this.outline.map(
-                    n=>n.level
-                )
-
-            );
-
-        console.group(
-
-            "DOCUMENT OUTLINE TREE"
-
-        );
-
-        console.dir(
-
-            this.outlineTree
-
-        );
-
-        console.groupEnd();
-
-    }
-
-    // =====================================================
-    // EXPORTAR OUTLINE A TASK STEPS
-    // =====================================================
-
-    exportOutlineTasks() {
-
-        const outlineSteps = [];
-
-        const walk = (nodes, parent = null) => {
-
-            nodes.forEach(node => {
-
-                outlineSteps.push({
-
-                    id: node.id,
-
-                    page: node.page,
-
-                    title: node.title,
-
-                    shortTitle: node.shortTitle,
-
-                    level: node.level,
-
-                    parentId: parent,
-
-                    headerType: node.type,
-
-                    items: [],
-
-                    children: node.children.map(
-                        child => child.id
-                    )
-
-                });
-
-                walk(node.children, node.id);
-
-            });
-
-        };
-
-        walk(this.outlineTree);
-
-        this.outlineTaskSteps = outlineSteps;
-
-        console.group("TASK STEPS FROM OUTLINE");
-
-        console.table(outlineSteps);
-
-        console.groupEnd();
-
-    }
-
     // ================================
     // 🧹 DESTROY
     // ================================
@@ -4515,6 +3791,7 @@ export class PDFViewer {
 
         this._scrolling = false;
         this._zooming = false;
+        this.documentParser.reset();
 
         clearTimeout(this.searchDebounce);
         clearTimeout(this._scrollEnd);
