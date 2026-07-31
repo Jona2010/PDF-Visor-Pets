@@ -8,7 +8,7 @@ export class PDFViewer {
 
         this.pdfDoc     = null;
         this.scale      = 1;
-        this.prevScale  = 1;   // escala anterior — para anclar el zoom al cursor
+        this.prevScale  = 1;
         this.pixelRatio = window.devicePixelRatio || 1;
 
         // Flag para suprimir el observer de render mientras el zoom anima
@@ -16,6 +16,11 @@ export class PDFViewer {
 
         this.currentPage = 1;
         this.loadedAt    = null;
+
+        // ✅ NUEVAS VARIABLES: Control de carga para evitar conflictos
+        this._loadId = 0;
+        this._isLoading = false;
+        this._pendingLoad = null;
 
         // ================================
         // 🔎 SEARCH ENGINE
@@ -272,9 +277,29 @@ export class PDFViewer {
     // ================================
 
     async load(url) {
+        // ✅ Incrementar ID de carga para rastrear cuál es la última
+        const loadId = ++this._loadId;
+        this._isLoading = true;
+        
         try {
-            // ✅ Limpiar el estado actual ANTES de cargar
+            // ✅ Si hay una carga en progreso, cancelarla
+            if (this.loadingTask) {
+                try {
+                    this.loadingTask.destroy();
+                } catch (e) {
+                    // Ignorar errores de cancelación
+                }
+                this.loadingTask = null;
+            }
+
+            // ✅ Limpiar el estado actual (sin destruir el worker)
             this._cleanup();
+
+            // ✅ Verificar que esta carga sigue siendo la última
+            if (loadId !== this._loadId) {
+                console.log('⏹️ Carga cancelada (nueva solicitud)');
+                return;
+            }
 
             // ✅ Crear una nueva tarea de carga
             const loadingTask = pdfjsLib.getDocument({
@@ -282,13 +307,25 @@ export class PDFViewer {
                 withCredentials: false
             });
 
-            // ✅ Guardar la referencia para poder cancelarla después
+            // ✅ Guardar la referencia
             this.loadingTask = loadingTask;
 
-            this.pdfDoc = await loadingTask.promise;
+            // ✅ Verificar que esta carga sigue siendo la última
+            if (loadId !== this._loadId) {
+                this.loadingTask = null;
+                try { loadingTask.destroy(); } catch {}
+                console.log('⏹️ Carga cancelada (nueva solicitud)');
+                return;
+            }
 
-            // ✅ La carga terminó correctamente, ya no hace falta conservarla
+            this.pdfDoc = await loadingTask.promise;
             this.loadingTask = null;
+
+            // ✅ Verificar que esta carga sigue siendo la última
+            if (loadId !== this._loadId) {
+                console.log('⏹️ Carga cancelada (nueva solicitud)');
+                return;
+            }
 
             await this.buildTextIndex();
 
@@ -296,31 +333,28 @@ export class PDFViewer {
             // MOTOR ACTUAL
             // ================================
             this.extractProcedureBlock();
-
             this.normalizeProcedureBlock();
-
             this.detectProcedureType();
-
             this.parseProcedureBlock();
 
             // ================================
             // NUEVO DOCUMENT OUTLINE ENGINE
             // ================================
             this.extractProcedureRange();
-
             this.mergeFragmentsIntoLines();
-
             this.detectHeadingStyles();
-
             this.detectOutlineHeadings();
-
             this.buildOutlineTree();
-
             this.exportOutlineTasks();
-
             this.debugSearchIndex();
 
             this.loadedAt = Date.now();
+
+            // ✅ Verificar que esta carga sigue siendo la última
+            if (loadId !== this._loadId) {
+                console.log('⏹️ Carga cancelada (nueva solicitud)');
+                return;
+            }
 
             // Crear placeholders en paralelo
             await Promise.all(
@@ -329,6 +363,12 @@ export class PDFViewer {
                     (_, i) => this.createPage(i + 1)
                 )
             );
+
+            // ✅ Verificar que esta carga sigue siendo la última
+            if (loadId !== this._loadId) {
+                console.log('⏹️ Carga cancelada (nueva solicitud)');
+                return;
+            }
 
             this.currentPage = 1;
             this.onPageChange?.(1, this.pdfDoc.numPages);
@@ -341,10 +381,19 @@ export class PDFViewer {
             });
 
         } catch (error) {
-            // También limpiar la referencia si falla
-            this.loadingTask = null;
+            // ✅ Si es un error de cancelación, ignorarlo
+            if (error?.name === 'AbortException' || 
+                error?.message?.includes('Worker was destroyed') ||
+                error?.message?.includes('Worker was terminated')) {
+                console.log('⏹️ Carga cancelada');
+                return;
+            }
+            
             console.error("❌ PDF LOAD ERROR:", error);
             throw error;
+        } finally {
+            this._isLoading = false;
+            this.loadingTask = null;
         }
     }
 
@@ -4498,6 +4547,8 @@ export class PDFViewer {
 
         this._scrolling = false;
         this._zooming = false;
+        this._isLoading = false;
+        this._loadId = 0;
 
         clearTimeout(this.searchDebounce);
         clearTimeout(this._scrollEnd);
@@ -4512,7 +4563,7 @@ export class PDFViewer {
     // ================================
 
     _cleanup() {
-        // ✅ Cancelar renders en progreso (sin destruir el worker)
+        // ✅ NO destruir el worker, solo cancelar tareas de render
         for (const task of this.renderTasks.values()) {
             try {
                 task.cancel();
