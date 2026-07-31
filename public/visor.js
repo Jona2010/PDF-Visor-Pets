@@ -10,6 +10,57 @@ from "./zoom.js";
 import { Sidebar }
 from "./sidebar.js";
 
+// ================================================================
+// 🛑 PATCH: SILENCIAR ERRORES DE WORKER (AGREGAR AQUÍ)
+// ================================================================
+
+// ✅ Parchear la función ensureNotTerminated del worker
+(function patchWorkerErrors() {
+    // Crear un filtro para errores de worker
+    const workerErrorFilter = (message) => {
+        return message?.includes?.('Worker was terminated') ||
+               message?.includes?.('Worker was destroyed') ||
+               message?.includes?.('ensureNotTerminated');
+    };
+
+    // ✅ Capturar errores de promesas
+    window.addEventListener('unhandledrejection', function(event) {
+        const error = event.reason;
+        const msg = error?.message || error?.toString?.() || '';
+        
+        if (workerErrorFilter(msg)) {
+            event.preventDefault();
+            event.stopPropagation();
+            console.debug('⏹️ Worker error silenciado');
+            return true;
+        }
+    });
+
+    // ✅ Capturar errores de eventos
+    window.addEventListener('error', function(event) {
+        const msg = event.message || '';
+        if (workerErrorFilter(msg)) {
+            event.preventDefault();
+            event.stopPropagation();
+            console.debug('⏹️ Worker error silenciado');
+            return true;
+        }
+    }, true);
+
+    // ✅ Parchear console.error para filtrar errores de worker
+    const originalConsoleError = console.error;
+    console.error = function(...args) {
+        const msg = args.join(' ');
+        if (workerErrorFilter(msg)) {
+            // Silenciar completamente
+            return;
+        }
+        originalConsoleError.apply(console, args);
+    };
+
+    console.log('✅ Worker error filter installed');
+})();
+
 // ================================
 // 🌍 GLOBALS
 // ================================
@@ -2139,17 +2190,6 @@ window.app = {
 // ================================
 // 🛑 SILENCIAR ERRORES DE WORKER (GLOBAL)
 // ================================
-
-// Capturar errores no manejados de promesas
-window.addEventListener('unhandledrejection', function(event) {
-    const error = event.reason;
-    if (error?.message?.includes('Worker was terminated') ||
-        error?.message?.includes('Worker was destroyed')) {
-        event.preventDefault();
-        console.debug('⏹️ Error de worker silenciado (cambio rápido)');
-        return;
-    }
-});
 
 // Capturar errores de eventos
 window.addEventListener('error', function(event) {
