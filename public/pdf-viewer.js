@@ -317,7 +317,7 @@ export class PDFViewer {
 
             this.exportOutlineTasks();
             // DEBUG: Ver qué pasos se extrajeron
-            console.log("🔍 DEBUG - Pasos extraídos:", this.taskSteps.length);
+            /*console.log("🔍 DEBUG - Pasos extraídos:", this.taskSteps.length);
             if (this.taskSteps.length > 0) {
                 console.log("📋 Primeros pasos:");
                 console.table(this.taskSteps.slice(0, 5).map(s => ({
@@ -328,7 +328,7 @@ export class PDFViewer {
                 })));
             } else {
                 console.warn("⚠️ No se extrajeron pasos");
-            }
+            }*/
 
             this.debugSearchIndex();
 
@@ -1197,7 +1197,7 @@ export class PDFViewer {
 
         if (!this.pdfDoc) return;
 
-        console.log("📖 Construyendo índice de texto...");
+        //console.log("📖 Construyendo índice de texto...");
 
         // Reiniciar estructuras
         this.pageTextCache.clear();
@@ -1300,10 +1300,10 @@ export class PDFViewer {
 
                 );
 
-                console.log(
+                /*console.log(
                     `Página ${pageNumber}:`,
                     pageText.substring(0,150)
-                );
+                );*/
 
                 // Agregar al índice de búsqueda
                 this.searchIndex.push({
@@ -1320,9 +1320,9 @@ export class PDFViewer {
 
             this.searchReady = true;
 
-            console.log(
+            /*console.log(
                 `✅ Índice creado (${this.searchIndex.length} páginas)`
-            );
+            );*/
 
         }
 
@@ -1454,11 +1454,11 @@ export class PDFViewer {
 
         }
 
-        console.log(
+        /*console.log(
             `🔎 "${query}" encontrado en ${results.length} página(s)`
         );
 
-        console.table(results);
+        console.table(results);*/
 
         return results;
 
@@ -1775,11 +1775,11 @@ export class PDFViewer {
 
         this.procedureBlock = normalized;
 
-        console.group("🧹 PROCEDURE NORMALIZED");
+        /*console.group("🧹 PROCEDURE NORMALIZED");
 
         console.table(normalized);
 
-        console.groupEnd();
+        console.groupEnd();*/
 
         return normalized;
 
@@ -1883,7 +1883,7 @@ export class PDFViewer {
 
         };
 
-        console.group("📊 PROCEDURE TYPE");
+        /*console.group("📊 PROCEDURE TYPE");
 
         console.table(stats);
 
@@ -1891,7 +1891,7 @@ export class PDFViewer {
 
         console.log("Confianza:", confidence);
 
-        console.groupEnd();
+        console.groupEnd();*/
 
         return this.procedureType;
 
@@ -1930,7 +1930,7 @@ export class PDFViewer {
         // Construir índice de ubicaciones
         this.buildTaskLocations();
 
-        console.group("📋 TASK STEPS");
+        /*console.group("📋 TASK STEPS");
 
         console.table(
 
@@ -1948,7 +1948,7 @@ export class PDFViewer {
 
         );
 
-        console.groupEnd();
+        console.groupEnd();*/
 
         return this.taskSteps;
 
@@ -2059,7 +2059,7 @@ export class PDFViewer {
 
         }
 
-        console.group("🌳 PROCEDURE TREE");
+        /*console.group("🌳 PROCEDURE TREE");
 
         console.table(
 
@@ -2081,7 +2081,7 @@ export class PDFViewer {
 
         );
 
-        console.groupEnd();
+        console.groupEnd();*/
 
     }
 
@@ -2183,7 +2183,7 @@ export class PDFViewer {
 
         }
 
-        console.group("📋 STEP ITEMS");
+        /*console.group("📋 STEP ITEMS");
 
         console.table(
 
@@ -2203,7 +2203,7 @@ export class PDFViewer {
 
         );
 
-        console.groupEnd();
+        console.groupEnd();*/
 
     }
 
@@ -2505,7 +2505,7 @@ export class PDFViewer {
 
         this.taskSteps = finalized;
 
-        console.group("📋 FINAL TASK STEPS");
+        /*console.group("📋 FINAL TASK STEPS");
 
         console.table(
 
@@ -2533,7 +2533,7 @@ export class PDFViewer {
 
         );
 
-        console.groupEnd();
+        console.groupEnd();*/
 
     }
 
@@ -2594,11 +2594,11 @@ export class PDFViewer {
 
         }
 
-        console.group("🌳 TASK TREE");
+        /*console.group("🌳 TASK TREE");
 
         console.dir(this.taskTree);
 
-        console.groupEnd();
+        console.groupEnd();*/
 
     }
 
@@ -2687,7 +2687,7 @@ export class PDFViewer {
 
         }
 
-        if (warnings.length) {
+        /*if (warnings.length) {
 
             console.group("⚠️ TASK TREE WARNINGS");
 
@@ -2700,7 +2700,7 @@ export class PDFViewer {
 
             console.log("✅ TaskTree validado correctamente.");
 
-        }
+        }*/
 
         return warnings;
 
@@ -2792,13 +2792,13 @@ export class PDFViewer {
 
         walk(this.taskTree);
 
-        console.group("📍 TASK LOCATIONS");
+        /*console.group("📍 TASK LOCATIONS");
 
         console.table(
             [...this.taskLocations.values()]
         );
 
-        console.groupEnd();
+        console.groupEnd();*/
 
     }
 
@@ -2929,9 +2929,9 @@ export class PDFViewer {
 
         }
 
-        console.log("📚 Secciones detectadas:");
+        /*console.log("📚 Secciones detectadas:");
 
-        console.table(this.sections);
+        console.table(this.sections);*/
 
         return this.sections;
 
@@ -3310,7 +3310,7 @@ export class PDFViewer {
 
         }
 
-        console.group("📚 SEARCH INDEX");
+        /*console.group("📚 SEARCH INDEX");
 
         this.searchIndex.forEach(page=>{
 
@@ -3326,7 +3326,7 @@ export class PDFViewer {
 
         });
 
-        console.groupEnd();
+        console.groupEnd();*/
 
     }
 
@@ -3909,7 +3909,7 @@ export class PDFViewer {
         this.outlineStats.totalFragments =
             this.outlineFragments.length;
 
-        console.group("DOCUMENT OUTLINE RANGE");
+        /*console.group("DOCUMENT OUTLINE RANGE");
 
         console.log("Rango:");
 
@@ -3919,7 +3919,7 @@ export class PDFViewer {
 
         console.table(this.outlineFragments);
 
-        console.groupEnd();
+        console.groupEnd();*/
 
     }
 
@@ -4033,7 +4033,7 @@ export class PDFViewer {
 
         });
 
-        console.group("DOCUMENT OUTLINE LINES");
+        /*console.group("DOCUMENT OUTLINE LINES");
 
         console.table(
 
@@ -4051,7 +4051,7 @@ export class PDFViewer {
 
         );
 
-        console.groupEnd();
+        console.groupEnd();*/
 
     }
 
@@ -4109,7 +4109,7 @@ export class PDFViewer {
 
             );
 
-        console.group("DOCUMENT STYLES");
+        /*console.group("DOCUMENT STYLES");
 
         console.table(
 
@@ -4143,7 +4143,7 @@ export class PDFViewer {
 
         );
 
-        console.groupEnd();
+        console.groupEnd();*/
 
     }
 
@@ -4301,13 +4301,13 @@ export class PDFViewer {
         this.outlineStats.totalHeadings =
             this.outline.length;
 
-        console.group(
+        /*console.group(
             "DOCUMENT OUTLINE HEADINGS"
         );
 
         console.table(this.outline);
 
-        console.groupEnd();
+        console.groupEnd();*/
 
     }
 
@@ -4382,7 +4382,7 @@ export class PDFViewer {
 
             );
 
-        console.group(
+        /*console.group(
 
             "DOCUMENT OUTLINE TREE"
 
@@ -4394,7 +4394,7 @@ export class PDFViewer {
 
         );
 
-        console.groupEnd();
+        console.groupEnd();*/
 
     }
 
@@ -4444,11 +4444,11 @@ export class PDFViewer {
 
         this.outlineTaskSteps = outlineSteps;
 
-        console.group("TASK STEPS FROM OUTLINE");
+        /*console.group("TASK STEPS FROM OUTLINE");
 
         console.table(outlineSteps);
 
-        console.groupEnd();
+        console.groupEnd();*/
 
     }
 
