@@ -273,9 +273,10 @@ export class PDFViewer {
 
     async load(url) {
         try {
+            // ✅ Limpiar el estado actual ANTES de cargar
+            this._cleanup();
 
-            this.destroy();
-
+            // ✅ Crear una nueva tarea de carga
             const loadingTask = pdfjsLib.getDocument({
                 url,
                 withCredentials: false
@@ -286,7 +287,7 @@ export class PDFViewer {
 
             this.pdfDoc = await loadingTask.promise;
 
-             // ✅ La carga terminó correctamente, ya no hace falta conservarla
+            // ✅ La carga terminó correctamente, ya no hace falta conservarla
             this.loadingTask = null;
 
             await this.buildTextIndex();
@@ -316,19 +317,6 @@ export class PDFViewer {
             this.buildOutlineTree();
 
             this.exportOutlineTasks();
-            // DEBUG: Ver qué pasos se extrajeron
-            /*console.log("🔍 DEBUG - Pasos extraídos:", this.taskSteps.length);
-            if (this.taskSteps.length > 0) {
-                console.log("📋 Primeros pasos:");
-                console.table(this.taskSteps.slice(0, 5).map(s => ({
-                    id: s.id,
-                    title: s.title.substring(0, 50),
-                    page: s.page,
-                    items: s.items?.length || 0
-                })));
-            } else {
-                console.warn("⚠️ No se extrajeron pasos");
-            }*/
 
             this.debugSearchIndex();
 
@@ -353,10 +341,8 @@ export class PDFViewer {
             });
 
         } catch (error) {
-
             // También limpiar la referencia si falla
             this.loadingTask = null;
-
             console.error("❌ PDF LOAD ERROR:", error);
             throw error;
         }
@@ -4457,7 +4443,6 @@ export class PDFViewer {
     // ================================
 
     destroy() {
-
         // ✅ Cancelar una carga de PDF que aún esté en progreso
         if (this.loadingTask) {
             try {
@@ -4511,6 +4496,61 @@ export class PDFViewer {
         this.loadedAt = null;
         this.currentPage = 1;
 
+        this._scrolling = false;
+        this._zooming = false;
+
+        clearTimeout(this.searchDebounce);
+        clearTimeout(this._scrollEnd);
+        clearTimeout(this.zoomTimeout);
+
+        this.initializeObserver();
+        this.initializePageObserver();
+    }
+
+    // ================================
+    // 🧹 CLEANUP (para recargar sin romper el worker)
+    // ================================
+
+    _cleanup() {
+        // ✅ Cancelar renders en progreso (sin destruir el worker)
+        for (const task of this.renderTasks.values()) {
+            try {
+                task.cancel();
+            } catch {}
+        }
+        this.renderTasks.clear();
+
+        // ✅ Desconectar observers
+        this.observer?.disconnect();
+        this.pageObserver?.disconnect();
+
+        // ✅ Limpiar el viewer
+        this.viewer.innerHTML = "";
+
+        // ✅ Resetear estado (pero NO el worker)
+        this.searchIndex = [];
+        this.searchMatches = [];
+        this.currentMatch = -1;
+        this.activeSearchLocation = -1;
+        this.totalSearchLocations = 0;
+        this.searchQuery = "";
+        this.searchReady = false;
+        this.pageTextCache.clear();
+        this.textCoordinates.clear();
+        this.pageTextFragments.clear();
+        this.searchLocations = [];
+        this.highlightLayers.clear();
+        this.pages = [];
+        this.sections = {};
+        this.procedureBlock = null;
+        this.procedureType = null;
+        this.pdfDoc = null;
+        this.taskSteps = [];
+        this.taskMap.clear();
+        this.taskTree = [];
+        this.resetOutline();
+        this.loadedAt = null;
+        this.currentPage = 1;
         this._scrolling = false;
         this._zooming = false;
 
