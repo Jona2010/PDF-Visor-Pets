@@ -906,23 +906,18 @@
     </div>
 
     <!-- =======================================
-         PDF.js - SIN defer para configuración correcta
+        PDF.js - Configuración con CDN
     ======================================= -->
 
     <!-- 1. Cargar PDF.js -->
     <script src="pdf.min.js"></script>
 
-    <!-- 2. Configurar el worker inmediatamente -->
+    <!-- 2. Configurar el worker con CDN (siempre funciona) -->
     <script>
         if (typeof pdfjsLib !== 'undefined') {
-            // Usar la ruta correcta de tu worker
-            // Si está en la misma carpeta:
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js';
-            
-            // Si usas CDN (descomenta esta línea y comenta la anterior):
-            // pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            
-            console.log('✅ PDF.js worker configurado correctamente');
+            // ✅ Usar CDN para el worker
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            console.log('✅ PDF.js worker configurado con CDN');
         } else {
             console.error('❌ pdfjsLib no está disponible');
         }
