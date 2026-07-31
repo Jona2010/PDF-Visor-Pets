@@ -277,7 +277,7 @@ export class PDFViewer {
     // ================================
 
     async load(url) {
-        // ✅ Incrementar ID de carga para rastrear cuál es la última
+        // ✅ Incrementar ID de carga
         const loadId = ++this._loadId;
         this._isLoading = true;
         
@@ -287,17 +287,16 @@ export class PDFViewer {
                 try {
                     this.loadingTask.destroy();
                 } catch (e) {
-                    // Ignorar errores de cancelación
+                    // Ignorar errores de cancelación (SILENCIADO)
                 }
                 this.loadingTask = null;
             }
 
-            // ✅ Limpiar el estado actual (sin destruir el worker)
+            // ✅ Limpiar el estado actual
             this._cleanup();
 
             // ✅ Verificar que esta carga sigue siendo la última
             if (loadId !== this._loadId) {
-                console.log('⏹️ Carga cancelada (nueva solicitud)');
                 return;
             }
 
@@ -307,14 +306,12 @@ export class PDFViewer {
                 withCredentials: false
             });
 
-            // ✅ Guardar la referencia
             this.loadingTask = loadingTask;
 
             // ✅ Verificar que esta carga sigue siendo la última
             if (loadId !== this._loadId) {
                 this.loadingTask = null;
                 try { loadingTask.destroy(); } catch {}
-                console.log('⏹️ Carga cancelada (nueva solicitud)');
                 return;
             }
 
@@ -323,7 +320,6 @@ export class PDFViewer {
 
             // ✅ Verificar que esta carga sigue siendo la última
             if (loadId !== this._loadId) {
-                console.log('⏹️ Carga cancelada (nueva solicitud)');
                 return;
             }
 
@@ -352,7 +348,6 @@ export class PDFViewer {
 
             // ✅ Verificar que esta carga sigue siendo la última
             if (loadId !== this._loadId) {
-                console.log('⏹️ Carga cancelada (nueva solicitud)');
                 return;
             }
 
@@ -366,7 +361,6 @@ export class PDFViewer {
 
             // ✅ Verificar que esta carga sigue siendo la última
             if (loadId !== this._loadId) {
-                console.log('⏹️ Carga cancelada (nueva solicitud)');
                 return;
             }
 
@@ -381,14 +375,19 @@ export class PDFViewer {
             });
 
         } catch (error) {
-            // ✅ Si es un error de cancelación, ignorarlo
-            if (error?.name === 'AbortException' || 
-                error?.message?.includes('Worker was destroyed') ||
-                error?.message?.includes('Worker was terminated')) {
-                console.log('⏹️ Carga cancelada');
+            // ✅ SILENCIAR errores de worker terminado
+            const isWorkerError = error?.name === 'AbortException' || 
+                                error?.message?.includes('Worker was destroyed') ||
+                                error?.message?.includes('Worker was terminated') ||
+                                error?.message?.includes('Worker was destroyed');
+
+            if (isWorkerError) {
+                // ✅ Silenciar completamente el error
+                console.debug('⏹️ Carga cancelada (cambio rápido de PET)');
                 return;
             }
             
+            // ✅ Solo mostrar errores reales
             console.error("❌ PDF LOAD ERROR:", error);
             throw error;
         } finally {

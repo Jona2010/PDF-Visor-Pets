@@ -1640,8 +1640,8 @@ async function openPDF(path, petName, areaName) {
         clearExplorer();
         clearExplorerSearch();
 
-        viewer?.destroy?.();       // si existe
-        viewer?.clear?.();         // si existe
+        viewer?.destroy?.();
+        viewer?.clear?.();
 
         const container = document.getElementById("pdfContainer");
         if (container) {
@@ -1650,27 +1650,33 @@ async function openPDF(path, petName, areaName) {
 
         toggleEmptyState(false);
         togglePDFSplash(true);
-        //showLoading("Cargando PDF...");
 
         updateTopBar(petName, areaName);
 
         const pdfUrl = await buildPDFUrl(path);
         await viewer.load(pdfUrl);
 
-        // ==========================
-        // ACTUALIZAR EXPLORADOR
-        // ==========================
-
         renderExplorer();
-
         togglePDFSplash(false);
-        //hideLoading();
 
     } catch (error) {
 
+        // ✅ SILENCIAR ERRORES DE WORKER TERMINADO
+        const isWorkerError = 
+            error?.message?.includes('Worker was terminated') ||
+            error?.message?.includes('Worker was destroyed') ||
+            error?.name === 'AbortException';
+
+        if (isWorkerError) {
+            // ✅ Silenciar completamente - solo log de debug
+            console.debug('⏹️ Carga cancelada (cambio rápido de PET)');
+            togglePDFSplash(false);
+            loading = false;
+            return;
+        }
+
         console.error("❌ PDF ERROR:", error);
         togglePDFSplash(false);
-        //hideLoading();
 
         // Reintento automático si URL expiró
         if (error?.message?.includes("expired") || error?.status === 400) {
@@ -1680,6 +1686,11 @@ async function openPDF(path, petName, areaName) {
                 togglePDFSplash(false);
                 return;
             } catch (e2) {
+                // ✅ Silenciar también errores de worker en el reintento
+                if (e2?.message?.includes('Worker was terminated')) {
+                    console.debug('⏹️ Reintento cancelado');
+                    return;
+                }
                 console.error("❌ RETRY ERROR:", e2);
             }
         }
@@ -2124,3 +2135,30 @@ window.app = {
     getSidebar()  { return sidebar;  },
     getSupabase() { return supabase; }
 };
+
+// ================================
+// 🛑 SILENCIAR ERRORES DE WORKER (GLOBAL)
+// ================================
+
+// Capturar errores no manejados de promesas
+window.addEventListener('unhandledrejection', function(event) {
+    const error = event.reason;
+    if (error?.message?.includes('Worker was terminated') ||
+        error?.message?.includes('Worker was destroyed')) {
+        event.preventDefault();
+        console.debug('⏹️ Error de worker silenciado (cambio rápido)');
+        return;
+    }
+});
+
+// Capturar errores de eventos
+window.addEventListener('error', function(event) {
+    const message = event.message || '';
+    if (message.includes('Worker was terminated') ||
+        message.includes('Worker was destroyed')) {
+        event.preventDefault();
+        event.stopPropagation();
+        console.debug('⏹️ Error de worker silenciado (cambio rápido)');
+        return;
+    }
+}, true);
