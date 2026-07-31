@@ -905,11 +905,32 @@
 
     </div>
 
-    <!-- PDF.js -->
-    <script src="pdf.min.js" defer></script>
+    <!-- =======================================
+         PDF.js - SIN defer para configuración correcta
+    ======================================= -->
 
-    <!-- App -->
+    <!-- 1. Cargar PDF.js -->
+    <script src="pdf.min.js"></script>
+
+    <!-- 2. Configurar el worker inmediatamente -->
+    <script>
+        if (typeof pdfjsLib !== 'undefined') {
+            // Usar la ruta correcta de tu worker
+            // Si está en la misma carpeta:
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js';
+            
+            // Si usas CDN (descomenta esta línea y comenta la anterior):
+            // pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            
+            console.log('✅ PDF.js worker configurado correctamente');
+        } else {
+            console.error('❌ pdfjsLib no está disponible');
+        }
+    </script>
+
+    <!-- 3. Cargar la aplicación -->
     <script type="module" src="visor.js"></script>
 
 </body>
+
 </html>
