@@ -1566,11 +1566,13 @@ export class PDFViewer {
             return [];
         }
 
+        // ✅ Buscar PROCEDIMIENTO (4 o 5)
         const startRegex =
-            /^\s*4(\.\d+)?\.?\s*(PROCEDIMIENTO|PASOS\s+DE\s+LA\s+TAREA|ACTIVIDADES|CONSIDERACIONES)/i;
+            /^\s*[4-5]\.?\s*(PROCEDIMIENTO|PASOS\s+DE\s+LA\s+TAREA|ACTIVIDADES|CONSIDERACIONES)/i;
 
+        // ✅ Fin: siguiente sección (5, 6, 7, 8, 9, 10) o fin de página
         const endRegex =
-            /^\s*(5|6|7|8|9|10)(\.\d+)?\./;
+            /^\s*[6-9]|10\s*\./;
 
         let started = false;
 
@@ -1604,7 +1606,8 @@ export class PDFViewer {
 
                 if (started) {
 
-                    if (endRegex.test(line))
+                    // ✅ Detener al encontrar RESTRICCIONES o sección 5
+                    if (/RESTRICCIONES/i.test(line) || endRegex.test(line))
                         return this.procedureBlock;
 
                     this.procedureBlock.push({
@@ -3840,11 +3843,13 @@ export class PDFViewer {
             return;
         }
 
+        // ✅ Buscar PROCEDIMIENTO (4 o 5)
         const startRegex =
-            /^\s*4(\.\d+)?\.?\s+PROCEDIMIENTO\b/i;
+            /^\s*[4-5]\.?\s+PROCEDIMIENTO\b/i;
 
+        // ✅ Fin: RESTRICCIONES o siguiente sección
         const endRegex =
-            /^\s*5(\.\d+)?\.?\s+RESTRICCIONES\b/i;
+            /^\s*[6-9]|10\s*\.?\s+RESTRICCIONES\b/i;
 
         let started = false;
 
@@ -3917,7 +3922,7 @@ export class PDFViewer {
                 // Fin del procedimiento
                 if (
                     started &&
-                    endRegex.test(text)
+                    (endRegex.test(text) || /RESTRICCIONES/i.test(text))
                 ) {
 
                     this.outlineRange.endPage =
@@ -3942,19 +3947,6 @@ export class PDFViewer {
 
         this.outlineStats.totalFragments =
             this.outlineFragments.length;
-
-        /*console.group("DOCUMENT OUTLINE RANGE");
-
-        console.log("Rango:");
-
-        console.table(this.outlineRange);
-
-        console.log("Total Fragmentos:", this.outlineFragments.length);
-
-        console.table(this.outlineFragments);
-
-        console.groupEnd();*/
-
     }
 
     // =====================================================
