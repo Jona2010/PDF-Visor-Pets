@@ -4220,7 +4220,7 @@ export class PDFViewer {
 
             else if (
 
-                fragment.fontSize >=
+                line.fontSize >=        // ✅ CORREGIDO: line en lugar de fragment
                 this.headingStyles.headingSize
 
             ) {
@@ -4286,11 +4286,9 @@ export class PDFViewer {
                 id,
                 {
 
-                    page: fragment.page,
-
-                    x: fragment.x,
-
-                    y: fragment.y
+                    page: line.page,    // ✅ CORREGIDO: line.page
+                    x: line.x,           // ✅ CORREGIDO: line.x
+                    y: line.y            // ✅ CORREGIDO: line.y
 
                 }
 
