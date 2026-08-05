@@ -277,7 +277,7 @@ export class PDFViewer {
     // ================================
 
     async load(url) {
-        // ✅ Incrementar ID de carga
+        // ✅ Incrementar ID de carga para rastrear cuál es la última
         const loadId = ++this._loadId;
         this._isLoading = true;
         
@@ -287,16 +287,17 @@ export class PDFViewer {
                 try {
                     this.loadingTask.destroy();
                 } catch (e) {
-                    // Ignorar errores de cancelación (SILENCIADO)
+                    // Ignorar errores de cancelación
                 }
                 this.loadingTask = null;
             }
 
-            // ✅ Limpiar el estado actual
+            // ✅ Limpiar el estado actual (sin destruir el worker)
             this._cleanup();
 
             // ✅ Verificar que esta carga sigue siendo la última
             if (loadId !== this._loadId) {
+                console.log('⏹️ Carga cancelada (nueva solicitud)');
                 return;
             }
 
@@ -306,12 +307,14 @@ export class PDFViewer {
                 withCredentials: false
             });
 
+            // ✅ Guardar la referencia
             this.loadingTask = loadingTask;
 
             // ✅ Verificar que esta carga sigue siendo la última
             if (loadId !== this._loadId) {
                 this.loadingTask = null;
                 try { loadingTask.destroy(); } catch {}
+                console.log('⏹️ Carga cancelada (nueva solicitud)');
                 return;
             }
 
@@ -320,6 +323,7 @@ export class PDFViewer {
 
             // ✅ Verificar que esta carga sigue siendo la última
             if (loadId !== this._loadId) {
+                console.log('⏹️ Carga cancelada (nueva solicitud)');
                 return;
             }
 
@@ -348,6 +352,7 @@ export class PDFViewer {
 
             // ✅ Verificar que esta carga sigue siendo la última
             if (loadId !== this._loadId) {
+                console.log('⏹️ Carga cancelada (nueva solicitud)');
                 return;
             }
 
@@ -361,6 +366,7 @@ export class PDFViewer {
 
             // ✅ Verificar que esta carga sigue siendo la última
             if (loadId !== this._loadId) {
+                console.log('⏹️ Carga cancelada (nueva solicitud)');
                 return;
             }
 
@@ -375,19 +381,14 @@ export class PDFViewer {
             });
 
         } catch (error) {
-            // ✅ SILENCIAR errores de worker terminado
-            const isWorkerError = error?.name === 'AbortException' || 
-                                error?.message?.includes('Worker was destroyed') ||
-                                error?.message?.includes('Worker was terminated') ||
-                                error?.message?.includes('Worker was destroyed');
-
-            if (isWorkerError) {
-                // ✅ Silenciar completamente el error
-                console.debug('⏹️ Carga cancelada (cambio rápido de PET)');
+            // ✅ Si es un error de cancelación, ignorarlo
+            if (error?.name === 'AbortException' || 
+                error?.message?.includes('Worker was destroyed') ||
+                error?.message?.includes('Worker was terminated')) {
+                console.log('⏹️ Carga cancelada');
                 return;
             }
             
-            // ✅ Solo mostrar errores reales
             console.error("❌ PDF LOAD ERROR:", error);
             throw error;
         } finally {
@@ -1566,13 +1567,11 @@ export class PDFViewer {
             return [];
         }
 
-        // ✅ Buscar PROCEDIMIENTO (4 o 5)
         const startRegex =
-            /^\s*[4-5]\.?\s*(PROCEDIMIENTO|PASOS\s+DE\s+LA\s+TAREA|ACTIVIDADES|CONSIDERACIONES)/i;
+            /^\s*4(\.\d+)?\.?\s*(PROCEDIMIENTO|PASOS\s+DE\s+LA\s+TAREA|ACTIVIDADES|CONSIDERACIONES)/i;
 
-        // ✅ Fin: siguiente sección (5, 6, 7, 8, 9, 10) o fin de página
         const endRegex =
-            /^\s*[6-9]|10\s*\./;
+            /^\s*(5|6|7|8|9|10)(\.\d+)?\./;
 
         let started = false;
 
@@ -1606,8 +1605,7 @@ export class PDFViewer {
 
                 if (started) {
 
-                    // ✅ Detener al encontrar RESTRICCIONES o sección 5
-                    if (/RESTRICCIONES/i.test(line) || endRegex.test(line))
+                    if (endRegex.test(line))
                         return this.procedureBlock;
 
                     this.procedureBlock.push({
@@ -3843,13 +3841,11 @@ export class PDFViewer {
             return;
         }
 
-        // ✅ Buscar PROCEDIMIENTO (4 o 5)
         const startRegex =
-            /^\s*[4-5]\.?\s+PROCEDIMIENTO\b/i;
+            /^\s*4(\.\d+)?\.?\s+PROCEDIMIENTO\b/i;
 
-        // ✅ Fin: RESTRICCIONES o siguiente sección
         const endRegex =
-            /^\s*[6-9]|10\s*\.?\s+RESTRICCIONES\b/i;
+            /^\s*5(\.\d+)?\.?\s+RESTRICCIONES\b/i;
 
         let started = false;
 
@@ -3922,7 +3918,7 @@ export class PDFViewer {
                 // Fin del procedimiento
                 if (
                     started &&
-                    (endRegex.test(text) || /RESTRICCIONES/i.test(text))
+                    endRegex.test(text)
                 ) {
 
                     this.outlineRange.endPage =
@@ -3947,6 +3943,19 @@ export class PDFViewer {
 
         this.outlineStats.totalFragments =
             this.outlineFragments.length;
+
+        /*console.group("DOCUMENT OUTLINE RANGE");
+
+        console.log("Rango:");
+
+        console.table(this.outlineRange);
+
+        console.log("Total Fragmentos:", this.outlineFragments.length);
+
+        console.table(this.outlineFragments);
+
+        console.groupEnd();*/
+
     }
 
     // =====================================================
