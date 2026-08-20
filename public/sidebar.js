@@ -60,14 +60,14 @@ const AREA_CONFIG = [
         color: "#64748B",
         icon: "mantenimiento-mina.png"
     },
-
+/*
     {
         id: "GENERAL PROCESOS",
         nombre: "General Procesos",
         color: "#7C3AED",
         icon: "procesos.png"
     },
-
+*/
     {
         id: "PLANTAS-PLAN OPIMIZADO",
         nombre: "Plantas Plan Optimizado",
